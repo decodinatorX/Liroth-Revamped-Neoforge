@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "liroth:block/anomaly",
+    "particle": "liroth:block/anomaly"
+  }
+}

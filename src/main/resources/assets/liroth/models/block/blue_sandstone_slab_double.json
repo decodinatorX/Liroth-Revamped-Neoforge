@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "liroth:block/blue_sandstone_bottom",
+    "particle": "liroth:block/blue_sandstone_bottom"
+  }
+}

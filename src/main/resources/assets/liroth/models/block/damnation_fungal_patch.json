@@ -1,0 +1,8 @@
+{
+  "parent": "block/cross",
+  "render_type": "cutout",
+  "textures": {
+    "cross": "liroth:block/damnation_fungal_patch",
+    "particle": "liroth:block/damnation_fungal_patch"
+  }
+}

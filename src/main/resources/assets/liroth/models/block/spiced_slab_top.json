@@ -1,0 +1,8 @@
+{
+  "parent": "block/slab_top",
+  "textures": {
+    "bottom": "liroth:block/spiced_planks",
+    "top": "liroth:block/spiced_planks",
+    "side": "liroth:block/spiced_planks"
+  }
+}

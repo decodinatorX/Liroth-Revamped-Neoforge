@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    "liroth:liroth_gem_helmet",
+    "liroth:liroth_gem_chestplate",
+    "liroth:liroth_gem_leggings",
+    "liroth:liroth_gem_boots",
+    "liroth:lirothian_cobalt_helmet",
+    "liroth:lirothian_cobalt_chestplate",
+    "liroth:lirothian_cobalt_leggings",
+    "liroth:lirothian_cobalt_boots",
+    "liroth:liroth_gem_ansalum_helmet",
+    "liroth:liroth_gem_ansalum_chestplate",
+    "liroth:liroth_gem_ansalum_leggings",
+    "liroth:liroth_gem_ansalum_boots",
+    "liroth:liroth_gem_lux_helmet",
+    "liroth:liroth_gem_lux_chestplate",
+    "liroth:liroth_gem_lux_leggings",
+    "liroth:liroth_gem_lux_boots",
+    "liroth:liroth_gem_salem_helmet",
+    "liroth:liroth_gem_salem_chestplate",
+    "liroth:liroth_gem_salem_leggings",
+    "liroth:liroth_gem_salem_boots",
+    "liroth:quantum_liroth_helmet",
+    "liroth:quantum_liroth_chestplate",
+    "liroth:quantum_liroth_leggings",
+    "liroth:quantum_liroth_boots",
+    "liroth:potestium_liroth_chestplate",
+    "liroth:potestium_liroth_leggings",
+    "liroth:potestium_liroth_boots",
+    "liroth:potestium_liroth_helmet"
+  ]
+}

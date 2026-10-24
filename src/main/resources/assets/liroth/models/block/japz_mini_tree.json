@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/template_azalea",
+  "render_type": "cutout",
+  "textures": {
+    "top": "liroth:block/japz_mini_tree_top",
+    "side": "liroth:block/japz_mini_tree_side"
+  }
+}

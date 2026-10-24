@@ -1,0 +1,7 @@
+{
+  "parent": "block/fence_side",
+  "textures": {
+    "texture": "liroth:block/liroth_planks",
+    "particle": "liroth:block/liroth_planks"
+  }
+}

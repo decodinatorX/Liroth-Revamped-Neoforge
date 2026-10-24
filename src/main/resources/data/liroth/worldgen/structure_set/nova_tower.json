@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "liroth:nova_tower",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "salt": 484748486,
+    "spacing": 80,
+    "separation": 64,
+    "type": "minecraft:random_spread"
+  }
+}

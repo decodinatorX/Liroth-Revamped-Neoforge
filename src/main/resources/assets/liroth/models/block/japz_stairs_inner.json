@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "liroth:block/japz_planks",
+    "top": "liroth:block/japz_planks",
+    "side": "liroth:block/japz_planks"
+  }
+}

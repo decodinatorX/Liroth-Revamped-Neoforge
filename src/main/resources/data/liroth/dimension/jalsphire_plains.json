@@ -1,0 +1,12 @@
+{
+  "type": "liroth:jalsphire_plains",
+  "generator": {
+    "type": "liroth:dimension_seeded",
+    "seed_salt": 9127635410873,
+    "settings": "liroth:jalsphire_plains",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "liroth:jalsphire_plains"
+    }
+  }
+}

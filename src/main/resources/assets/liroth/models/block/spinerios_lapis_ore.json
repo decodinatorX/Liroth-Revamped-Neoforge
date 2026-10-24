@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "liroth:block/spinerios_lapis_ore",
+    "particle": "liroth:block/spinerios_lapis_ore"
+  }
+}

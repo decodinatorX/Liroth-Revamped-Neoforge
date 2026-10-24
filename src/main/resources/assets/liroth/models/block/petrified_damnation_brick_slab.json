@@ -1,0 +1,8 @@
+{
+  "parent": "block/slab",
+  "textures": {
+    "bottom": "liroth:block/petrified_damnation_bricks",
+    "top": "liroth:block/petrified_damnation_bricks",
+    "side": "liroth:block/petrified_damnation_bricks"
+  }
+}

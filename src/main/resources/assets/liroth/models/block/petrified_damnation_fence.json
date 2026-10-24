@@ -1,0 +1,7 @@
+{
+  "parent": "block/fence_side",
+  "textures": {
+    "texture": "liroth:block/petrified_damnation_planks",
+    "particle": "liroth:block/petrified_damnation_planks"
+  }
+}

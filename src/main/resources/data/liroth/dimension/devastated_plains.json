@@ -1,0 +1,12 @@
+{
+  "type": "liroth:devastated_plains",
+  "generator": {
+    "type": "liroth:dimension_seeded",
+    "seed_salt": 7382904156817,
+    "settings": "liroth:devastated_plains",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "liroth:devastated_plains"
+    }
+  }
+}

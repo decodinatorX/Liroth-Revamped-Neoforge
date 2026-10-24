@@ -1,0 +1,7 @@
+{
+  "parent": "block/cross",
+  "textures": {
+    "cross": "liroth:block/liroth_grass",
+    "particle": "liroth:block/liroth_grass"
+  }
+}

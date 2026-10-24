@@ -1,0 +1,7 @@
+{
+  "parent": "block/wall_inventory",
+  "textures": {
+    "wall": "liroth:block/liroth_stone",
+    "particle": "liroth:block/liroth_stone"
+  }
+}

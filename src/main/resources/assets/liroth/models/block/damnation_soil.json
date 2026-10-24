@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "liroth:block/damnation_soil",
+    "particle": "liroth:block/damnation_soil"
+  }
+}

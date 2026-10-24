@@ -1,0 +1,8 @@
+{
+  "parent": "block/stairs",
+  "textures": {
+    "bottom": "liroth:block/charred_liroth_stone_bricks",
+    "top": "liroth:block/charred_liroth_stone_bricks",
+    "side": "liroth:block/charred_liroth_stone_bricks"
+  }
+}

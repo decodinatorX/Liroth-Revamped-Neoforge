@@ -1,0 +1,8 @@
+{
+  "parent": "block/slab_top",
+  "textures": {
+    "bottom": "liroth:block/japz_planks",
+    "top": "liroth:block/japz_planks",
+    "side": "liroth:block/japz_planks"
+  }
+}

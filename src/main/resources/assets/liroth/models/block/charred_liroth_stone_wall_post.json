@@ -1,0 +1,7 @@
+{
+  "parent": "block/template_wall_post",
+  "textures": {
+    "wall": "liroth:block/charred_liroth_stone",
+    "particle": "liroth:block/charred_liroth_stone"
+  }
+}

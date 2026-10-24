@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "liroth:block/devastated_pillar_top",
+    "side": "liroth:block/devastated_pillar"
+  }
+}

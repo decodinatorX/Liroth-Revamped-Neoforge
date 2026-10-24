@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "package": "com.decodinator.liroth.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "RandomStateAccessor",
+    "ChunkGeneratorMixin"
+  ],
+  "client": [
+    "client.CustomPortalOverlayMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

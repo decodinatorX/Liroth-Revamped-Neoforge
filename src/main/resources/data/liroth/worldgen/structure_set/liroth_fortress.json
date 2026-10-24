@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "liroth:liroth_fortress",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "salt": 889532745,
+    "spacing": 96,
+    "separation": 80,
+    "type": "minecraft:random_spread"
+  }
+}

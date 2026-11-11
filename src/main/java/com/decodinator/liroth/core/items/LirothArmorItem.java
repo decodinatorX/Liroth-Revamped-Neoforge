@@ -6,20 +6,20 @@ import org.betterx.bclib.interfaces.ItemModelProvider;
 import org.betterx.wover.complex.api.equipment.ArmorSlot;
 import org.betterx.wover.complex.api.equipment.ArmorTier;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 
-public class LirothArmorItem extends ArmorItem implements ItemModelProvider {
-    public static final ResourceLocation BASE_BLINDNESS_RESISTANCE = Liroth.C.mk("base_blindness_resistance");
-    public static final ResourceLocation BASE_KNOCKBACK_RESISTANCE = Liroth.C.mk("base_knockback_resistance");
-    public static final ResourceLocation MAX_HEALTH_BOOST = Liroth.C.mk("max_health_boost");
-    public static final ResourceLocation TOUGHNESS_BOOST = Liroth.C.mk("toughness_boost");
-    public static final ResourceLocation ARMOR_BOOST = Liroth.C.mk("armor_boost");
+public class LirothArmorItem extends Item implements ItemModelProvider {
+    public static final Identifier BASE_BLINDNESS_RESISTANCE = Liroth.C.mk("base_blindness_resistance");
+    public static final Identifier BASE_KNOCKBACK_RESISTANCE = Liroth.C.mk("base_knockback_resistance");
+    public static final Identifier MAX_HEALTH_BOOST = Liroth.C.mk("max_health_boost");
+    public static final Identifier TOUGHNESS_BOOST = Liroth.C.mk("toughness_boost");
+    public static final Identifier ARMOR_BOOST = Liroth.C.mk("armor_boost");
 
     public static Properties createDefaultEndArmorSettings(ArmorSlot slot, ArmorTier tier) {
         var values = tier.getValues(slot);
@@ -27,7 +27,9 @@ public class LirothArmorItem extends ArmorItem implements ItemModelProvider {
             throw new IllegalArgumentException("Values for " + slot + " are not defined for " + tier);
         }
 
-        return LirothItems.defaultSettings().durability(slot.armorType.getDurability(values.durability()));
+        return LirothItems.defaultSettings()
+                .humanoidArmor(tier.armorMaterial, slot.armorType)
+                .durability(slot.armorType.getDurability(values.durability()));
     }
 
     public static ItemAttributeModifiers.Builder startAttributeBuilder(
@@ -37,8 +39,8 @@ public class LirothArmorItem extends ArmorItem implements ItemModelProvider {
         return startAttributeBuilder(
                 slot,
                 tier,
-                tier.armorMaterial.value().getDefense(slot.armorType) / 1.25f,
-                tier.armorMaterial.value().toughness() / 1.25f,
+                tier.armorMaterial.defense().getOrDefault(slot.armorType, 0) / 1.25f,
+                tier.armorMaterial.toughness() / 1.25f,
                 0.0f
         );
     }
@@ -102,15 +104,15 @@ public class LirothArmorItem extends ArmorItem implements ItemModelProvider {
         }
     }
 
-    private static ResourceLocation armorBoostId(ArmorSlot slot) {
+    private static Identifier armorBoostId(ArmorSlot slot) {
         return Liroth.C.mk("armor_boost_" + slot.name);
     }
 
-    private static ResourceLocation toughnessBoostId(ArmorSlot slot) {
+    private static Identifier toughnessBoostId(ArmorSlot slot) {
         return Liroth.C.mk("toughness_boost_" + slot.name);
     }
 
-    private static ResourceLocation knockbackResistanceId(ArmorSlot slot) {
+    private static Identifier knockbackResistanceId(ArmorSlot slot) {
         return Liroth.C.mk("base_knockback_resistance_" + slot.name);
     }
 
@@ -129,6 +131,6 @@ public class LirothArmorItem extends ArmorItem implements ItemModelProvider {
     }
 
     public LirothArmorItem(ArmorTier tier, ArmorSlot slot, Properties settings) {
-        super(tier.armorMaterial, slot.armorType, settings);
+        super(settings);
     }
 }

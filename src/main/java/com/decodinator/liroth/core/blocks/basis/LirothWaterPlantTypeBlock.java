@@ -6,10 +6,12 @@ import com.decodinator.liroth.core.registry.LirothFluids;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
@@ -62,12 +64,12 @@ public class LirothWaterPlantTypeBlock extends Block implements SimpleWaterlogge
         return AABB;
     }
 
-    public BlockState updateShape(BlockState p_49173_, Direction p_49174_, BlockState p_49175_, LevelAccessor p_49176_, BlockPos p_49177_, BlockPos p_49178_) {
-        if (p_49173_.getValue(WATERLOGGED)) {
-            p_49176_.scheduleTick(p_49177_, LirothFluids.LIROTH_FLUID, LirothFluids.LIROTH_FLUID.getTickDelay(p_49176_));
+    protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos, Direction direction, BlockPos neighborPos, BlockState neighborState, RandomSource random) {
+        if (state.getValue(WATERLOGGED)) {
+            ticks.scheduleTick(pos, LirothFluids.LIROTH_FLUID, LirothFluids.LIROTH_FLUID.getTickDelay(level));
         }
 
-        return p_49174_ == Direction.DOWN && !this.canSurvive(p_49173_, p_49176_, p_49177_) ? Blocks.AIR.defaultBlockState() : super.updateShape(p_49173_, p_49174_, p_49175_, p_49176_, p_49177_, p_49178_);
+        return direction == Direction.DOWN && !this.canSurvive(state, level, pos) ? Blocks.AIR.defaultBlockState() : super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random);
     }
 
     public boolean canSurvive(BlockState p_49169_, LevelReader p_49170_, BlockPos p_49171_) {

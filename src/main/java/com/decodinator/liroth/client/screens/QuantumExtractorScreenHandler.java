@@ -10,8 +10,6 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 
 public class QuantumExtractorScreenHandler extends AbstractContainerMenu {
@@ -32,7 +30,6 @@ public class QuantumExtractorScreenHandler extends AbstractContainerMenu {
         container.startOpen(playerInventory.player);
         this.data = data;
 
-        // Our Slots
         this.addSlot(new Slot(container, 0, 56, 13) {
             @Override
             public boolean mayPlace(ItemStack stack) {
@@ -115,15 +112,11 @@ public class QuantumExtractorScreenHandler extends AbstractContainerMenu {
         slot.onTake(player, originalStack);
         return movedStack;
     }
-
-    @OnlyIn(Dist.CLIENT)
     public int getCookProgress(int pixels) {
         int time = data.get(2);
         int timeTotal = data.get(3);
         return timeTotal != 0 && time != 0 ? time * pixels / timeTotal : 0;
     }
-
-    @OnlyIn(Dist.CLIENT)
     public int getFuelProgress() {
         int i = this.data.get(1);
         if (i == 0) {
@@ -131,8 +124,6 @@ public class QuantumExtractorScreenHandler extends AbstractContainerMenu {
         }
         return this.data.get(0) * 13 / i;
     }
-
-    @OnlyIn(Dist.CLIENT)
     public boolean isBurning() {
         return this.data.get(0) > 0;
     }

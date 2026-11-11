@@ -1,59 +1,56 @@
 package com.decodinator.liroth.core.items;
 
 import com.decodinator.liroth.client.rendering.items.PotestiumHelmetRenderer;
+import com.decodinator.liroth.core.items.material.LirothArmorMaterial;
+import com.google.common.base.Suppliers;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.core.Holder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animatable.client.GeoRenderProvider;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.constant.DefaultAnimations;
-import software.bernie.geckolib.renderer.GeoArmorRenderer;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoItem;
+import com.geckolib.animatable.client.GeoRenderProvider;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.DefaultAnimations;
+import com.geckolib.renderer.GeoArmorRenderer;
+import com.geckolib.util.GeckoLibUtil;
+import net.minecraft.world.item.equipment.ArmorType;
+
 
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class PotestiumHelmetItem extends ArmorItem implements GeoItem {
+public class PotestiumHelmetItem extends Item implements GeoItem {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
-    public PotestiumHelmetItem(Holder<ArmorMaterial> materialIn, ArmorItem.Type slot, Item.Properties builder)  {
-        super(materialIn, slot, builder);
+    public PotestiumHelmetItem()  {
+        super(new Properties().humanoidArmor(LirothArmorMaterial.POTESTIUM_LIROTH.value(), ArmorType.HELMET));
     }
 
     @Override
     public void createGeoRenderer(Consumer<GeoRenderProvider> consumer) {
         consumer.accept(new GeoRenderProvider() {
-            private GeoArmorRenderer<?> renderer;
+            private final Supplier<PotestiumHelmetRenderer<?>> renderer = Suppliers.memoize(PotestiumHelmetRenderer::new);
 
+            @Nullable
             @Override
-            public <T extends LivingEntity> HumanoidModel<?> getGeoArmorRenderer(@Nullable T livingEntity, ItemStack itemStack, @Nullable EquipmentSlot equipmentSlot, @Nullable HumanoidModel<T> original) {
-                if(this.renderer == null)
-                    this.renderer = new PotestiumHelmetRenderer();
-
-                return this.renderer;
+            public GeoArmorRenderer<?, ?> getGeoArmorRenderer(ItemStack itemStack, EquipmentSlot equipmentSlot) {
+                return this.renderer.get();
             }
         });
     }
 
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, 20, state -> {
-            state.getController().setAnimation(DefaultAnimations.IDLE);
-            Entity entity = state.getData(DataTickets.ENTITY);
-            if (entity instanceof ArmorStand)
-                return PlayState.CONTINUE;
+    public void registerControllers(com.geckolib.animatable.manager.AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>("Main", 20, state -> {
             return PlayState.CONTINUE;
         }));
     }

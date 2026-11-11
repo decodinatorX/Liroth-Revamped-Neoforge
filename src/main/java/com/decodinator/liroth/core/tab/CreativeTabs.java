@@ -19,21 +19,32 @@ public class CreativeTabs {
                 .start(Liroth.C)
                 .createTab("blocks")
                 .setIcon(LirothBlocks.LIROTH_GEM_BLOCK)
-                .setPredicate(item -> item instanceof BlockItem blockItem
-                        && !LirothBlocks.PLANT_BLOCKS.contains(blockItem.getBlock()))
+                .setPredicate(item -> item == LirothItems.LIROTHIAN_PETROLEUM_BLOCK
+                        || item instanceof BlockItem blockItem
+                        && !LirothBlocks.PLANT_BLOCKS.contains(blockItem.getBlock())
+                        && item != LirothItems.DAMNATION_FUNGAL_CLUSTER
+                        && item != LirothItems.DAMNATION_FUNGUS)
                 .buildAndAdd()
                 .createTab("plants")
                 .setIcon(LirothBlocks.LIROTH_ROSE)
                 .setPredicate(item -> item instanceof BlockItem blockItem
-                        && LirothBlocks.PLANT_BLOCKS.contains(blockItem.getBlock()))
+                        && (LirothBlocks.PLANT_BLOCKS.contains(blockItem.getBlock())
+                        || item == LirothItems.DAMNATION_FUNGAL_CLUSTER
+                        || item == LirothItems.DAMNATION_FUNGUS))
                 .buildAndAdd()
                 .createTab("items")
                 .setIcon(LirothBlocks.LIROTH_GEM.ingot)
-                .setPredicate(item -> !(item instanceof BlockItem) && !LirothItems.EQUIPMENT.contains(item))
+                .setPredicate(item -> !(item instanceof BlockItem)
+                        && !LirothItems.EQUIPMENT.contains(item)
+                        && !LirothItems.ENTITIES.contains(item))
                 .buildAndAdd()
                 .createTab("combat")
                 .setIcon(LirothBlocks.LIROTH_GEM.sword)
                 .setPredicate(LirothItems.EQUIPMENT::contains)
+                .buildAndAdd()
+                .createTab("entities")
+                .setIcon(LirothItems.FUNGAL_FIEND_SPAWN_EGG)
+                .setPredicate(LirothItems.ENTITIES::contains)
                 .buildAndAdd()
                 .processRegistries()
                 .registerAllTabs();

@@ -2,10 +2,10 @@ package com.decodinator.liroth.core.blocks;
 
 import com.decodinator.liroth.core.entities.LirothianMimicEntity;
 import com.decodinator.liroth.core.registry.LirothEntities;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -17,13 +17,13 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class LirothianMimicBlock extends Block {
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
     protected static final VoxelShape AABB = Block.box(1.0, 0.0, 1.0, 15.0, 14.0, 15.0);
     public LirothianMimicBlock() {
         super(BlockBehaviour.Properties.ofFullCopy(Blocks.CHEST).noOcclusion());
@@ -35,43 +35,45 @@ public class LirothianMimicBlock extends Block {
         return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
-    @Deprecated //Forge: Use more sensitive version
-    public boolean dropFromExplosion(Explosion explosion) {
+    @Override
+    public boolean canDropFromExplosion(BlockState state, BlockGetter level, BlockPos pos, Explosion explosion) {
         return false;
     }
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         triggerMimic(state, level, pos, player);
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         triggerMimic(state, level, pos, player);
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     private void triggerMimic(BlockState state, Level level, BlockPos pos, Player player) {
-        if (!level.isClientSide) {
+        if (level instanceof ServerLevel serverLevel) {
             level.removeBlock(pos, false);
             level.levelEvent(2001, pos, Block.getId(state));
-            spawnMimic(level, pos, player);
+            spawnMimic(serverLevel, pos, player);
         }
     }
 
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         BlockState destroyedState = super.playerWillDestroy(level, pos, state, player);
-        if (!level.isClientSide) {
-            spawnMimic(level, pos, player);
+        if (level instanceof ServerLevel serverLevel) {
+            spawnMimic(serverLevel, pos, player);
         }
         return destroyedState;
     }
 
-    private void spawnMimic(Level level, BlockPos pos, Player player) {
+    private void spawnMimic(ServerLevel level, BlockPos pos, Player player) {
         LirothianMimicEntity mimic = new LirothianMimicEntity(LirothEntities.LIROTHIAN_MIMIC, level);
-        mimic.moveTo(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, player.getYRot(), 0.0F);
+        mimic.setPos(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5);
+        mimic.setYRot(player.getYRot());
+        mimic.setXRot(0.0F);
         mimic.setTarget(player);
         level.addFreshEntity(mimic);
     }

@@ -4,7 +4,7 @@ import com.decodinator.liroth.Liroth;
 import com.decodinator.liroth.core.fluids.LirothFluid;
 import com.decodinator.liroth.core.fluids.MoltenSpinerios;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.neoforged.neoforge.common.SoundActions;
@@ -14,10 +14,10 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 
 public class LirothFluids {
 
-    public static final ResourceLocation LIROTH_FLUID_STILL_PROP = ResourceLocation.fromNamespaceAndPath( Liroth.MOD_ID,"block/liroth_fluid_still");
-    public static final ResourceLocation LIROTH_FLUID_FLOWING_PROP = ResourceLocation.fromNamespaceAndPath( Liroth.MOD_ID,"block/liroth_fluid_flowing");
-    public static final ResourceLocation MOLTEN_SPINERIOS_STILL_PROP = ResourceLocation.fromNamespaceAndPath( Liroth.MOD_ID,"block/molten_spinerios_still");
-    public static final ResourceLocation MOLTEN_SPINERIOS_FLOWING_PROP = ResourceLocation.fromNamespaceAndPath( Liroth.MOD_ID,"block/molten_spinerios_flowing");
+    public static final Identifier LIROTH_FLUID_STILL_PROP = Identifier.fromNamespaceAndPath( Liroth.MOD_ID,"block/liroth_fluid_still");
+    public static final Identifier LIROTH_FLUID_FLOWING_PROP = Identifier.fromNamespaceAndPath( Liroth.MOD_ID,"block/liroth_fluid_flowing");
+    public static final Identifier MOLTEN_SPINERIOS_STILL_PROP = Identifier.fromNamespaceAndPath( Liroth.MOD_ID,"block/molten_spinerios_still");
+    public static final Identifier MOLTEN_SPINERIOS_FLOWING_PROP = Identifier.fromNamespaceAndPath( Liroth.MOD_ID,"block/molten_spinerios_flowing");
 
     public static final FluidType LIROTH_FLUID_TYPE = new FluidType(FluidType.Properties.create()
             .lightLevel(0)

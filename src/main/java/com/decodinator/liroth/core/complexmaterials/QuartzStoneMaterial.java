@@ -34,12 +34,12 @@ public class QuartzStoneMaterial implements MaterialManager.Material {
 
         this.name = name;
         stone = LirothBlocks.SOULLESS_SOIL;
-        polished = LirothBlocks.registerBlock("chiseled_"+name+"_bricks", new BaseBlock.Stone(material));
-        pillar = LirothBlocks.registerBlock(name + "_pillar_block", new BaseRotatedPillarBlock.Stone(material));
-        bricks = LirothBlocks.registerBlock(name + "_bricks", new BaseBlock.Stone(material));
-        brickStairs = LirothBlocks.registerBlock(name + "_brick_stairs", new BaseStairsBlock.Stone(bricks));
-        brickSlab = LirothBlocks.registerBlock(name + "_brick_slab", new BaseSlabBlock.Stone(bricks));
-        brickWall = LirothBlocks.registerBlock(name + "_brick_wall", new BaseWallBlock.Stone(bricks));
+        polished = LirothBlocks.registerBlock("chiseled_"+name+"_bricks", () -> new BaseBlock.Stone(material));
+        pillar = LirothBlocks.registerBlock(name + "_pillar_block", () -> new BaseRotatedPillarBlock.Stone(material));
+        bricks = LirothBlocks.registerBlock(name + "_bricks", () -> new BaseBlock.Stone(material));
+        brickStairs = LirothBlocks.registerBlock(name + "_brick_stairs", () -> new BaseStairsBlock.Stone(bricks));
+        brickSlab = LirothBlocks.registerBlock(name + "_brick_slab", () -> new BaseSlabBlock.Stone(bricks));
+        brickWall = LirothBlocks.registerBlock(name + "_brick_wall", () -> new BaseWallBlock.Stone(bricks));
 
 
         MaterialManager.register(this);
@@ -147,7 +147,7 @@ public class QuartzStoneMaterial implements MaterialManager.Material {
 
     @Override
     public void registerItemTags(ItemTagBootstrapContext context) {
-        context.add(ItemTags.SLABS, brickSlab.asItem());
+        context.add(ItemTags.CONCRETE_SLABS, brickSlab.asItem());
         context.add(ItemTags.STONE_BRICKS, bricks.asItem());
         context.add(ItemTags.STONE_CRAFTING_MATERIALS, stone.asItem());
         context.add(ItemTags.STONE_TOOL_MATERIALS, stone.asItem());

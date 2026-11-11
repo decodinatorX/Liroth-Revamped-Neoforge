@@ -24,9 +24,9 @@ public class LirothRecipeTypes {
         } else if (event.getRegistryKey().equals(Registries.RECIPE_SERIALIZER)) {
             event.register(Registries.RECIPE_SERIALIZER, helper -> {
                 LIROTH_SPLITTING_S = new SimpleSplitterSerializer<>(SplitterRecipe::new, 200);
-                helper.register(Liroth.C.mk("liroth_splitting"), LIROTH_SPLITTING_S);
+                helper.register(Liroth.C.mk("liroth_splitting"), LIROTH_SPLITTING_S.serializer());
                 QUANTUM_EXTRACTING_S = new SimpleQuantumSerializer<>(QuantumRecipe::new, 200);
-                helper.register(Liroth.C.mk("quantum_extracting"), QUANTUM_EXTRACTING_S);
+                helper.register(Liroth.C.mk("quantum_extracting"), QUANTUM_EXTRACTING_S.serializer());
             });
         }
     }

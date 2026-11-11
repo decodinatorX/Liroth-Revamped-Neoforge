@@ -40,8 +40,8 @@ public class LirothItemTagDataProvider extends WoverTagProvider.ForItems {
         context.add(ItemTags.COALS, LirothBlocks.LIROTHIAN_PETROLEUM_BLOCK.asItem());
         context.add(ItemTags.COALS, LirothItems.LIROTHIAN_PETROLEUM);
 
-        context.add(ItemTags.FLOWERS, LirothBlocks.LIROTH_ROSE.asItem());
-        context.add(ItemTags.FLOWERS, LirothBlocks.WILITING_LIROTH_ROSE.asItem());
+//        context.add(ItemTags.FLOWERS, LirothBlocks.LIROTH_ROSE.asItem());
+//        context.add(ItemTags.FLOWERS, LirothBlocks.WILITING_LIROTH_ROSE.asItem());
 
         context.add(ItemTags.WOLF_FOOD, LirothItems.BLOODY_ENTRAILS);
 
@@ -63,6 +63,6 @@ public class LirothItemTagDataProvider extends WoverTagProvider.ForItems {
         context.add(Tags.Items.MUSIC_DISCS, LirothItems.SPICED_MUSIC_DISC);
         context.add(Tags.Items.MUSIC_DISCS, LirothItems.SPITE_MUSIC_DISC);
 
-        context.add(Tags.Items.NETHERRACKS, LirothBlocks.NETHER_LIROTH_GEM_ORE);
+//        context.add(Tags.Items.NETHERRACKS, LirothBlocks.NETHER_LIROTH_GEM_ORE);
     }
 }

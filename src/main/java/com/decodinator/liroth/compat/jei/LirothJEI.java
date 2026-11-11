@@ -13,17 +13,24 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeMap;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.List;
 
 @JeiPlugin
 public class LirothJEI implements IModPlugin {
-    public final static ResourceLocation PLUGIN_ID = ResourceLocation.fromNamespaceAndPath(Liroth.MOD_ID, "jei_plugin");
+    public final static Identifier PLUGIN_ID = Identifier.fromNamespaceAndPath(Liroth.MOD_ID, "jei_plugin");
+    private static List<SplitterRecipe> splitterRecipes = List.of();
+    private static List<QuantumRecipe> quantumRecipes = List.of();
+
+    public LirothJEI() {
+        NeoForge.EVENT_BUS.addListener(this::onRecipesReceived);
+    }
 
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
@@ -39,41 +46,15 @@ public class LirothJEI implements IModPlugin {
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         IModPlugin.super.registerRecipes(registration);
-        ClientLevel level = Minecraft.getInstance().level;
-        if (level == null) {
-            return;
-        }
-
-        List<SplitterRecipe> recipes = level.getRecipeManager()
-                .getAllRecipesFor(LirothRecipeTypes.LIROTH_SPLITTING)
-                .stream()
-                .map(RecipeHolder::value)
-                .filter(SplitterRecipe.class::isInstance)
-                .map(SplitterRecipe.class::cast)
-                .toList();
-        registration.addRecipes(SplitterCategory.TYPE, recipes);
-
-        List<QuantumRecipe> quantumRecipes = level.getRecipeManager()
-                .getAllRecipesFor(LirothRecipeTypes.QUANTUM_EXTRACTING)
-                .stream()
-                .map(RecipeHolder::value)
-                .filter(QuantumRecipe.class::isInstance)
-                .map(QuantumRecipe.class::cast)
-                .toList();
+        registration.addRecipes(SplitterCategory.TYPE, splitterRecipes);
         registration.addRecipes(QuantumCategory.TYPE, quantumRecipes);
     }
 
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         IModPlugin.super.registerRecipeCatalysts(registration);
-        registration.addRecipeCatalyst(
-                new ItemStack(LirothBlocks.QUANTUM_EXTRACTOR),
-                QuantumCategory.TYPE
-        );
-        registration.addRecipeCatalyst(
-                new ItemStack(LirothBlocks.LIROTH_SPLITTER),
-                SplitterCategory.TYPE
-        );
+        registration.addCraftingStation(QuantumCategory.TYPE, LirothBlocks.QUANTUM_EXTRACTOR);
+        registration.addCraftingStation(SplitterCategory.TYPE, LirothBlocks.LIROTH_SPLITTER);
     }
 
     @Override
@@ -82,7 +63,17 @@ public class LirothJEI implements IModPlugin {
     }
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         return PLUGIN_ID;
+    }
+
+    private void onRecipesReceived(RecipesReceivedEvent event) {
+        RecipeMap recipeMap = event.getRecipeMap();
+        splitterRecipes = recipesOfType(recipeMap, LirothRecipeTypes.LIROTH_SPLITTING, SplitterRecipe.class);
+        quantumRecipes = recipesOfType(recipeMap, LirothRecipeTypes.QUANTUM_EXTRACTING, QuantumRecipe.class);
+    }
+
+    private static <T> List<T> recipesOfType(RecipeMap recipeMap, RecipeType<?> type, Class<T> recipeClass) {
+        return recipeMap.values().stream().filter(holder -> holder.value().getType() == type).map(RecipeHolder::value).filter(recipeClass::isInstance).map(recipeClass::cast).toList();
     }
 }

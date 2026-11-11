@@ -3,6 +3,7 @@ package com.decodinator.liroth.core.fluids;
 import com.decodinator.liroth.core.registry.LirothBlocks;
 import com.decodinator.liroth.core.registry.LirothFluids;
 import com.decodinator.liroth.core.registry.LirothItems;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -57,7 +58,7 @@ public abstract class LirothFluid extends WaterTypeFluid {
         }
 
         @Override
-        protected boolean canConvertToSource(Level var1) {
+        protected boolean canConvertToSource(ServerLevel var1) {
             return true;
         }
     }
@@ -69,7 +70,7 @@ public abstract class LirothFluid extends WaterTypeFluid {
         }
 
         @Override
-        protected boolean canConvertToSource(Level var1) {
+        protected boolean canConvertToSource(ServerLevel var1) {
             return false;
         }
 

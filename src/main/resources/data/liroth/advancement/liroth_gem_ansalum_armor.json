@@ -2,7 +2,7 @@
   "parent": "liroth:liroth_gem_ansalum",
   "display": {
     "icon": {
-      "id": "liroth:liroth_gem_anslaum_chestplate",
+      "id": "liroth:liroth_gem_ansalum_chestplate",
       "nbt": "{Damage:0}"
     },
     "title": {
@@ -23,7 +23,7 @@
         "items": [
           {
             "items": [
-              "liroth:liroth_gem_anslaum_helmet"
+              "liroth:liroth_gem_ansalum_helmet"
             ]
           }
         ]
@@ -35,7 +35,7 @@
         "items": [
           {
             "items": [
-              "liroth:liroth_gem_anslaum_chestplate"
+              "liroth:liroth_gem_ansalum_chestplate"
             ]
           }
         ]
@@ -47,7 +47,7 @@
         "items": [
           {
             "items": [
-              "liroth:liroth_gem_anslaum_leggings"
+              "liroth:liroth_gem_ansalum_leggings"
             ]
           }
         ]
@@ -59,7 +59,7 @@
         "items": [
           {
             "items": [
-              "liroth:liroth_gem_anslaum_boots"
+              "liroth:liroth_gem_ansalum_boots"
             ]
           }
         ]

@@ -1,6 +1,5 @@
 package com.decodinator.liroth.core.blocks;
 
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
@@ -23,14 +22,11 @@ public class CustomMiniTree extends BushBlock {
     }
 
     @Override
-    protected MapCodec<? extends BushBlock> codec() {
-        return null;
-    }
-
     public VoxelShape getShape(BlockState state, BlockGetter blockGetter, BlockPos pos, CollisionContext context) {
         return SHAPE;
     }
 
+    @Override
     protected boolean mayPlaceOn(BlockState state, BlockGetter blockGetter, BlockPos pos) {
         return state.is(growOnBlock) || super.mayPlaceOn(state, blockGetter, pos);
     }
@@ -40,6 +36,6 @@ public class CustomMiniTree extends BushBlock {
     }
 
     public boolean isBonemealSuccess(Level level, RandomSource randomSource, BlockPos pos, BlockState blockState) {
-        return (double)level.random.nextFloat() < 0.45D;
+        return (double)randomSource.nextFloat() < 0.45D;
     }
 }

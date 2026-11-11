@@ -20,25 +20,21 @@ public class LirothBlockEntities {
     public static void register(RegisterEvent event) {
         if (!event.getRegistryKey().equals(Registries.BLOCK_ENTITY_TYPE)) return;
         event.register(Registries.BLOCK_ENTITY_TYPE, helper -> {
-            FUNGAL_CAMPFIRE = BlockEntityType.Builder.of(
+            FUNGAL_CAMPFIRE = new BlockEntityType<>(
                     FungalCampfireBlockEntity::new,
-                    LirothBlocks.FUNGAL_CAMPFIRE
-            ).build(null);
+                    LirothBlocks.FUNGAL_CAMPFIRE);
             helper.register(Liroth.C.mk("fungal_campfire"), FUNGAL_CAMPFIRE);
-            LIROTHIAN_PETROLEUM_CAMPFIRE = BlockEntityType.Builder.of(
+            LIROTHIAN_PETROLEUM_CAMPFIRE = new BlockEntityType<>(
                     LirothianPetroleumCampfireBlockEntity::new,
-                    LirothBlocks.LIROTHIAN_PETROLEUM_CAMPFIRE
-            ).build(null);
+                    LirothBlocks.LIROTHIAN_PETROLEUM_CAMPFIRE);
             helper.register(Liroth.C.mk("lirothian_petroleum_campfire"), LIROTHIAN_PETROLEUM_CAMPFIRE);
-            LIROTH_SPLITTER = BlockEntityType.Builder.of(
+            LIROTH_SPLITTER = new BlockEntityType<>(
                     SplitterBlockEntity::new,
-                    LirothBlocks.LIROTH_SPLITTER
-            ).build(null);
+                    LirothBlocks.LIROTH_SPLITTER);
             helper.register(Liroth.C.mk("liroth_splitter"), LIROTH_SPLITTER);
-            QUANTUM_EXTRACTOR = BlockEntityType.Builder.of(
+            QUANTUM_EXTRACTOR = new BlockEntityType<>(
                     QuantumBlockEntity::new,
-                    LirothBlocks.QUANTUM_EXTRACTOR
-            ).build(null);
+                    LirothBlocks.QUANTUM_EXTRACTOR);
             helper.register(Liroth.C.mk("quantum_extractor"), QUANTUM_EXTRACTOR);
         });
     }

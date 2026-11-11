@@ -1,9 +1,5 @@
 package com.decodinator.liroth.client.models.entities;
 
-import com.decodinator.liroth.core.entities.FreakshowEntity;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -11,19 +7,12 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
+import com.decodinator.liroth.client.rendering.entities.FreakshowRenderState;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import org.jspecify.annotations.NullMarked;
 
-
-@OnlyIn(Dist.CLIENT)
-public class FreakshowModel<T extends FreakshowEntity> extends EntityModel<T> {
-    public boolean carrying;
-    public boolean creepy;
-    public float leaningPitch;
-
+@NullMarked
+public class FreakshowModel extends EntityModel<FreakshowRenderState> {
     private final ModelPart leftLeg;
     private final ModelPart rightLeg;
     private final ModelPart head;
@@ -32,6 +21,7 @@ public class FreakshowModel<T extends FreakshowEntity> extends EntityModel<T> {
     private final ModelPart body;
 
     public FreakshowModel(ModelPart root) {
+        super(root);
         this.leftLeg = root.getChild("left_leg");
         this.rightLeg = root.getChild("right_leg");
         this.head = root.getChild("head");
@@ -64,42 +54,38 @@ public class FreakshowModel<T extends FreakshowEntity> extends EntityModel<T> {
         return angleTwo + angleOne * f;
     }
 
-    private float method_2807(float f) {
-        return -65.0f * f + f * f;
-    }
-
     @Override
-    public void setupAnim(T livingEntity, float f, float g, float h, float i, float j) {
-        boolean bl3;
-        boolean bl = ((LivingEntity)livingEntity).getFallFlyingTicks() > 4;
-        boolean bl2 = ((LivingEntity)livingEntity).isVisuallySwimming();
-        this.head.yRot = i * ((float)Math.PI / 180);
-        this.head.xRot = bl ? -0.7853982f : (this.leaningPitch > 0.0f ? (bl2 ? this.lerpAngle(this.leaningPitch, this.head.xRot, -0.7853982f) : this.lerpAngle(this.leaningPitch, this.head.xRot, j * ((float)Math.PI / 180))) : j * ((float)Math.PI / 180));
+    public void setupAnim(FreakshowRenderState state) {
+        super.setupAnim(state);
+        float limbSwing = state.walkAnimationPos;
+        float limbSwingAmount = state.walkAnimationSpeed;
+        boolean fallFlying = state.isFallFlying;
+        this.head.yRot = state.yRot * ((float)Math.PI / 180);
+        this.head.xRot = fallFlying ? -0.7853982f : (state.swimAmount > 0.0f ? (state.isVisuallySwimming ? this.lerpAngle(state.swimAmount, this.head.xRot, -0.7853982f) : this.lerpAngle(state.swimAmount, this.head.xRot, state.xRot * ((float)Math.PI / 180))) : state.xRot * ((float)Math.PI / 180));
         this.body.yRot = 0.0f;
         this.rightArm.z = 0.0f;
         this.leftArm.z = 0.0f;
-        float k = 1.0f;
-        if (bl) {
-            k = (float)((Entity)livingEntity).getDeltaMovement().lengthSqr();
-            k /= 0.2f;
-            k *= k * k;
+        float speedScale = 1.0f;
+        if (fallFlying) {
+            speedScale = state.velocityLengthSqr / 0.2f;
+            speedScale *= speedScale * speedScale;
         }
-        if (k < 1.0f) {
-            k = 1.0f;
+        if (speedScale < 1.0f) {
+            speedScale = 1.0f;
         }
-        this.rightArm.xRot = Mth.cos(f * 0.6662f + (float)Math.PI) * 2.0f * g * 0.5f / k;
-        this.leftArm.xRot = Mth.cos(f * 0.6662f) * 2.0f * g * 0.5f / k;
+        this.rightArm.xRot = Mth.cos(limbSwing * 0.6662f + (float)Math.PI) * 2.0f * limbSwingAmount * 0.5f / speedScale;
+        this.leftArm.xRot = Mth.cos(limbSwing * 0.6662f) * 2.0f * limbSwingAmount * 0.5f / speedScale;
         this.rightArm.zRot = 0.0f;
         this.leftArm.zRot = 0.0f;
-        this.rightLeg.xRot = Mth.cos(f * 0.6662f) * 1.4f * g / k;
-        this.leftLeg.xRot = Mth.cos(f * 0.6662f + (float)Math.PI) * 1.4f * g / k;
+        this.rightLeg.xRot = Mth.cos(limbSwing * 0.6662f) * 1.4f * limbSwingAmount / speedScale;
+        this.leftLeg.xRot = Mth.cos(limbSwing * 0.6662f + (float)Math.PI) * 1.4f * limbSwingAmount / speedScale;
         this.rightLeg.yRot = 0.0f;
         this.leftLeg.yRot = 0.0f;
         this.rightLeg.zRot = 0.0f;
         this.leftLeg.zRot = 0.0f;
-        if (this.riding) {
-            this.rightArm.xRot += -0.62831855f;
-            this.leftArm.xRot += -0.62831855f;
+        if (state.isPassenger) {
+            this.rightArm.xRot -= 0.62831855f;
+            this.leftArm.xRot -= 0.62831855f;
             this.rightLeg.xRot = -1.4137167f;
             this.rightLeg.yRot = 0.31415927f;
             this.rightLeg.zRot = 0.07853982f;
@@ -109,18 +95,7 @@ public class FreakshowModel<T extends FreakshowEntity> extends EntityModel<T> {
         }
         this.rightArm.yRot = 0.0f;
         this.leftArm.yRot = 0.0f;
-        float p = 0.33333334f;
-        this.leftLeg.xRot = Mth.lerp(this.leaningPitch, this.leftLeg.xRot, 0.3f * Mth.cos(f * 0.33333334f + (float)Math.PI));
-        this.rightLeg.xRot = Mth.lerp(this.leaningPitch, this.rightLeg.xRot, 0.3f * Mth.cos(f * 0.33333334f));
-    }
-
-    @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int i, int i1, int i2) {
-        leftLeg.render(poseStack, vertexConsumer, i, i2);
-        rightLeg.render(poseStack, vertexConsumer, i, i2);
-        head.render(poseStack, vertexConsumer, i, i2);
-        leftArm.render(poseStack, vertexConsumer, i, i2);
-        rightArm.render(poseStack, vertexConsumer, i, i2);
-        body.render(poseStack, vertexConsumer, i, i2);
+        this.leftLeg.xRot = Mth.lerp(state.swimAmount, this.leftLeg.xRot, 0.3f * Mth.cos(limbSwing * 0.33333334f + (float)Math.PI));
+        this.rightLeg.xRot = Mth.lerp(state.swimAmount, this.rightLeg.xRot, 0.3f * Mth.cos(limbSwing * 0.33333334f));
     }
 }

@@ -9,8 +9,6 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 public class LirothSplitterScreenHandler extends AbstractContainerMenu {
     private final Container container;
@@ -23,14 +21,7 @@ public class LirothSplitterScreenHandler extends AbstractContainerMenu {
         this(menuType, recipeType, containerId, playerInventory, new SimpleContainer(5), new SimpleContainerData(4));
     }
 
-    protected LirothSplitterScreenHandler(
-            MenuType<?> menuType,
-            RecipeType<? extends AbstractSplitterRecipe> recipeType,
-            int containerId,
-            Inventory playerInventory,
-            Container container,
-            ContainerData data
-    ) {
+    protected LirothSplitterScreenHandler(MenuType<?> menuType, RecipeType<? extends AbstractSplitterRecipe> recipeType, int containerId, Inventory playerInventory, Container container, ContainerData data) {
         super(menuType, containerId);
         this.recipeType = recipeType;
         checkContainerSize(container, 5);
@@ -39,7 +30,6 @@ public class LirothSplitterScreenHandler extends AbstractContainerMenu {
         this.data = data;
         this.level = playerInventory.player.level();
 
-        // Our Slots
         this.addSlot(new Slot(container, 0, 52, 16) {
             @Override
             public boolean mayPlace(ItemStack stack) {
@@ -132,24 +122,18 @@ public class LirothSplitterScreenHandler extends AbstractContainerMenu {
         slot.onTake(player, originalStack);
         return movedStack;
     }
-
-    @OnlyIn(Dist.CLIENT)
     public int getCookProgress(int pixels) {
         int time = data.get(2);
         int timeTotal = data.get(3);
         return timeTotal != 0 && time != 0 ? time * pixels / timeTotal : 0;
     }
-
-    @OnlyIn(Dist.CLIENT)
     public int getFuelProgress() {
-        int i = this.data.get(1);
-        if (i == 0) {
-            i = 200;
+        int fuelTime = this.data.get(1);
+        if (fuelTime <= 0) {
+            return 0;
         }
-        return this.data.get(0) * 13 / i;
+        return Math.max(0, Math.min(13, (int) ((long) this.data.get(0) * 13 / fuelTime)));
     }
-
-    @OnlyIn(Dist.CLIENT)
     public boolean isBurning() {
         return this.data.get(0) > 0;
     }

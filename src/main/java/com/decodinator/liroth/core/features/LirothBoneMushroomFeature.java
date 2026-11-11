@@ -1,6 +1,6 @@
 package com.decodinator.liroth.core.features;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;
@@ -8,11 +8,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 public class LirothBoneMushroomFeature extends LirothSkeletonFeature {
-    public LirothBoneMushroomFeature(Codec<NoneFeatureConfiguration> codec) {
-        super(codec);
+    public static final MapCodec<LirothBoneMushroomFeature> CODEC = MapCodec.unit(LirothBoneMushroomFeature::new);
+
+    @Override
+    public MapCodec<LirothBoneMushroomFeature> codec() {
+        return CODEC;
     }
 
     @Override

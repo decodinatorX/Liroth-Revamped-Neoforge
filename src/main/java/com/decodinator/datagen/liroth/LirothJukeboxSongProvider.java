@@ -2,7 +2,7 @@ package com.decodinator.datagen.liroth;
 
 import com.decodinator.liroth.core.registry.LirothJukeboxSongs;
 import com.decodinator.liroth.core.registry.LirothSounds;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -28,21 +28,7 @@ public class LirothJukeboxSongProvider extends WoverRegistryContentProvider<Juke
         register(context, LirothJukeboxSongs.SPITE, context.lookup(Registries.SOUND_EVENT).getOrThrow(LirothSounds.KEY_SPITE), 302, 6);
         register(context, LirothJukeboxSongs.DESOLATION, context.lookup(Registries.SOUND_EVENT).getOrThrow(LirothSounds.KEY_DESOLATION), 144, 7);
     }
-    private static void register(
-            BootstrapContext<JukeboxSong> context,
-            ResourceKey<JukeboxSong> key,
-            Holder<SoundEvent> soundEvent,
-            float lengthInSeconds,
-            int comparatorOutput
-    ) {
-        context.register(
-                key,
-                new JukeboxSong(
-                        soundEvent,
-                        Component.translatable(Util.makeDescriptionId("jukebox_song", key.location())),
-                        lengthInSeconds,
-                        comparatorOutput
-                )
-        );
+    private static void register(BootstrapContext<JukeboxSong> context, ResourceKey<JukeboxSong> key, Holder<SoundEvent> soundEvent, float lengthInSeconds, int comparatorOutput) {
+        context.register(key, new JukeboxSong(soundEvent, Component.translatable(Util.makeDescriptionId("jukebox_song", key.identifier())), lengthInSeconds, comparatorOutput));
     }
 }

@@ -14,13 +14,14 @@ import com.decodinator.liroth.core.registry.LirothItems;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.core.*;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -40,13 +41,21 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.item.component.CookingFuel;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt;
 import net.minecraft.world.phys.Vec3;
 
 public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvider, Container, WorldlyContainer {
@@ -111,7 +120,8 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
         }
     };
 
-    private final Object2IntOpenHashMap<ResourceLocation> recipesUsed = new Object2IntOpenHashMap<>();
+    private static final Codec<Map<ResourceKey<Recipe<?>>, Integer>> RECIPES_USED_CODEC = Codec.unboundedMap(Recipe.KEY_CODEC, Codec.INT);
+    private final Object2IntOpenHashMap<ResourceKey<Recipe<?>>> recipesUsed = new Object2IntOpenHashMap<>();
     private final RecipeManager.CachedCheck<RecipeInput, ? extends AbstractSplitterRecipe> quickCheck;
 
     protected int processTime;
@@ -165,26 +175,30 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
     }
 
     @Override
-    public void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
-        super.saveAdditional(nbt, registries);
-        nbt.putInt("BurnTime", this.burnTime);
-        nbt.putInt("CookTime", this.cookTime);
-        nbt.putInt("CookTimeTotal", this.cookTimeTotal);
-        ContainerHelper.saveAllItems(nbt, this.inventory, registries);
-        CompoundTag compoundtag = new CompoundTag();
-        nbt.put("RecipesUsed", compoundtag);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt("BurnTime", this.burnTime);
+        output.putInt("FuelTime", this.fuelTime);
+        output.putInt("CookTime", this.cookTime);
+        output.putInt("CookTimeTotal", this.cookTimeTotal);
+        ContainerHelper.saveAllItems(output, this.inventory);
+        output.store("RecipesUsed", RECIPES_USED_CODEC, this.recipesUsed);
     }
 
     @Override
-    public void loadAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
-        super.loadAdditional(nbt, registries);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
         this.inventory = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(nbt, this.inventory, registries);
-        this.burnTime = nbt.getInt("BurnTime");
-        this.cookTime = nbt.getInt("CookTime");
-        this.cookTimeTotal = nbt.getInt("CookTimeTotal");
-        this.fuelTime = this.getFuelTime(this.inventory.get(1));
-        CompoundTag compoundtag = nbt.getCompound("RecipesUsed");
+        ContainerHelper.loadAllItems(input, this.inventory);
+        this.burnTime = input.getIntOr("BurnTime", 0);
+        this.fuelTime = input.getIntOr("FuelTime", 0);
+        this.cookTime = input.getIntOr("CookTime", 0);
+        this.cookTimeTotal = input.getIntOr("CookTimeTotal", this.getCookTime());
+        if (this.burnTime > 0 && this.fuelTime <= 0) {
+            this.fuelTime = Math.max(this.burnTime, this.getFuelTime(this.inventory.get(1)));
+        }
+        this.recipesUsed.clear();
+        this.recipesUsed.putAll(input.read("RecipesUsed", RECIPES_USED_CODEC).orElse(Map.of()));
     }
 
     public void forceUpdateAllStates() {
@@ -198,7 +212,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
         world.playSound(null, pos, sound, SoundSource.BLOCKS, 1.0f, 1.0f);
     }
 
-    public static void serverTick(Level p_155014_, BlockPos p_155015_, BlockState p_155016_, LirothSplitterBlockEntity p_155017_) {
+    public static void serverTick(ServerLevel p_155014_, BlockPos p_155015_, BlockState p_155016_, LirothSplitterBlockEntity p_155017_) {
         boolean flag = p_155017_.isBurning();
         boolean flag1 = false;
         if (p_155017_.isBurning()) {
@@ -217,19 +231,27 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
                 recipe = null;
             }
 
+            if (recipe != null && p_155017_.cookTimeTotal != recipe.value().getCookingTime()) {
+                p_155017_.cookTime = 0;
+                p_155017_.cookTimeTotal = Math.max(1, recipe.value().getCookingTime());
+            }
+
             int i = p_155017_.getMaxStackSize();
             if (!p_155017_.isBurning() && p_155017_.canBurn(p_155014_.registryAccess(), recipe, p_155017_.inventory, i, p_155017_)) {
                 p_155017_.burnTime = p_155017_.getFuelTime(fuel);
                 p_155017_.fuelTime = p_155017_.burnTime;
                 if (p_155017_.isBurning()) {
                     flag1 = true;
-                    if (fuel.hasCraftingRemainingItem()) {
-                        p_155017_.inventory.set(1, fuel.getCraftingRemainingItem());
-                    } else if (hasFuel) {
-                        fuel.shrink(1);
+                    ItemStackTemplate remainder = fuel.getCraftingRemainder();
+                    fuel.shrink(1);
+                    if (remainder != null) {
                         if (fuel.isEmpty()) {
-                            p_155017_.inventory.set(1, fuel.getCraftingRemainingItem());
+                            p_155017_.inventory.set(1, remainder.create());
+                        } else {
+                            Containers.dropItemStack(p_155014_, p_155015_.getX(), p_155015_.getY(), p_155015_.getZ(), remainder.create());
                         }
+                    } else if (fuel.isEmpty()) {
+                        p_155017_.inventory.set(1, ItemStack.EMPTY);
                     }
                 }
             }
@@ -238,7 +260,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
                 ++p_155017_.cookTime;
                 if (p_155017_.cookTime == p_155017_.cookTimeTotal) {
                     p_155017_.cookTime = 0;
-                    p_155017_.cookTimeTotal = getTotalCookTime(p_155014_, p_155017_);
+                    p_155017_.cookTimeTotal = Math.max(1, recipe.value().getCookingTime());
                     if (p_155017_.burn(p_155014_.registryAccess(), recipe, p_155017_.inventory, i, p_155017_)) {
                         p_155017_.setRecipeUsed(recipe);
                     }
@@ -273,8 +295,8 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
         ItemStack result = splitterRecipe.assemble(furnace, registryAccess);
         return !result.isEmpty()
                 && canFitOutput(inventory.get(2), result, maxStackSize)
-                && canFitOutput(inventory.get(3), splitterRecipe.getBonusItem().bonus, maxStackSize)
-                && canFitOutput(inventory.get(4), splitterRecipe.getBonusItem2().bonus, maxStackSize);
+                && canFitOutput(inventory.get(3), splitterRecipe.getBonusItem().getStack(), maxStackSize)
+                && canFitOutput(inventory.get(4), splitterRecipe.getBonusItem2().getStack(), maxStackSize);
     }
 
     private static boolean canFitOutput(ItemStack existing, ItemStack output, int maxStackSize) {
@@ -293,8 +315,8 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
             ItemStack itemstack = p_155028_.get(0);
             AbstractSplitterRecipe splitterRecipe = p_155027_.value();
             addOutput(p_155028_, 2, splitterRecipe.assemble(this, registryAccess));
-            addOutput(p_155028_, 3, splitterRecipe.createBonus(level.random));
-            addOutput(p_155028_, 4, splitterRecipe.createBonus2(level.random));
+            addOutput(p_155028_, 3, splitterRecipe.createBonus(level.getRandom()));
+            addOutput(p_155028_, 4, splitterRecipe.createBonus2(level.getRandom()));
 
             if (itemstack.is(Blocks.WET_SPONGE.asItem()) && !p_155028_.get(1).isEmpty() && p_155028_.get(1).is(Items.BUCKET)) {
                 p_155028_.set(1, new ItemStack(Items.WATER_BUCKET));
@@ -354,9 +376,23 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
         if (p_58343_.isEmpty()) {
             return 0;
         } else {
-            Item item = p_58343_.getItem();
-            return item.getBurnTime(p_58343_, this.recipeType);
+            if (this.level instanceof ServerLevel serverLevel) {
+                return ResolvableInt.getFromItem(
+                        p_58343_, DataComponents.COOKING_FUEL, CookingFuel::burnTime, getFuelLootContext(serverLevel, p_58343_), 0);
+            }
+            return 0;
         }
+    }
+
+    private LootContext getFuelLootContext(ServerLevel serverLevel, ItemStack fuel) {
+        LootParams params = new LootParams.Builder(serverLevel)
+                .withParameter(LootContextParams.BLOCK_STATE, this.getBlockState())
+                .withParameter(LootContextParams.BLOCK_ENTITY, this)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(this.getBlockPos()))
+                .withParameter(LootContextParams.CONTAINER, this)
+                .withOptionalParameter(net.neoforged.neoforge.common.loot.NeoForgeLootContextParams.QUERIED_STACK, fuel)
+                .create(LootContextParamSets.CONTAINER_PROCESS);
+        return new LootContext.Builder(params).create(java.util.Optional.empty());
     }
 
     @Override
@@ -366,13 +402,13 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
         }
         if (slot == 1) {
             ItemStack itemStack = this.inventory.get(1);
-            return AbstractFurnaceBlockEntity.isFuel(stack) || stack.is(Items.BUCKET) && !itemStack.is(Items.BUCKET);
+            return stack.has(DataComponents.COOKING_FUEL) || stack.is(Items.BUCKET) && !itemStack.is(Items.BUCKET);
         }
         return true;
     }
 
     public static boolean canUseAsFuel(ItemStack stack) {
-        return AVAILABLE_FUELS.containsKey(stack.getItem()) || AVAILABLE_FUELS.containsKey(stack.getItem().getBurnTime(stack, null) > 2000);
+        return AVAILABLE_FUELS.containsKey(stack.getItem()) || stack.has(DataComponents.COOKING_FUEL);
     }
 
     public static Map<Item, Integer> availableFuels() {
@@ -451,12 +487,17 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
     }
 
     public void drops() {
-        SimpleContainer inventoryDrop = new SimpleContainer(inventory.size());
-        for (int i = 0; i < inventory.size(); i++) {
-            inventory.set(i, inventory.get(i));
+        if (this.level != null) {
+            Containers.dropContents(this.level, this.worldPosition, this.inventory);
         }
+    }
 
-        Containers.dropContents(this.level, this.worldPosition, inventoryDrop);
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (this.level instanceof ServerLevel) {
+            Containers.dropContents(this.level, pos, this.inventory);
+        }
     }
 
     public int[] getSlotsForFace(Direction p_58363_) {
@@ -481,8 +522,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
 
     public void setRecipeUsed(@Nullable RecipeHolder<?> p_58345_) {
         if (p_58345_ != null) {
-            ResourceLocation resourcelocation = p_58345_.id();
-            this.recipesUsed.addTo(resourcelocation, 1);
+            this.recipesUsed.addTo(p_58345_.id(), 1);
         }
 
     }
@@ -496,7 +536,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
     }
 
     public void awardUsedRecipesAndPopExperience(ServerPlayer p_155004_) {
-        Collection<RecipeHolder<?>> list = this.getRecipesToAwardAndPopExperience(p_155004_.serverLevel(), p_155004_.position());
+        Collection<RecipeHolder<?>> list = this.getRecipesToAwardAndPopExperience((ServerLevel) p_155004_.level(), p_155004_.position());
         p_155004_.awardRecipes(list);
         this.recipesUsed.clear();
     }
@@ -504,8 +544,8 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
     public Collection<RecipeHolder<?>> getRecipesToAwardAndPopExperience(ServerLevel p_154996_, Vec3 p_154997_) {
         Collection<RecipeHolder<?>> list = Lists.newArrayList();
 
-        for(Object2IntMap.Entry<ResourceLocation> entry : this.recipesUsed.object2IntEntrySet()) {
-            p_154996_.getRecipeManager().byKey(entry.getKey()).ifPresent((p_155023_) -> {
+        for(Object2IntMap.Entry<ResourceKey<Recipe<?>>> entry : this.recipesUsed.object2IntEntrySet()) {
+            p_154996_.recipeAccess().byKey(entry.getKey()).ifPresent((p_155023_) -> {
                 list.add(p_155023_);
                 createExperience(p_154996_, p_154997_, entry.getIntValue(), ((AbstractSplitterRecipe)p_155023_.value()).getExperience());
             });
@@ -517,7 +557,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
     private static void createExperience(ServerLevel p_154999_, Vec3 p_155000_, int p_155001_, float p_155002_) {
         int i = Mth.floor((float)p_155001_ * p_155002_);
         float f = Mth.frac((float)p_155001_ * p_155002_);
-        if (f != 0.0F && Math.random() < (double)f) {
+        if (f != 0.0F && p_154999_.getRandom().nextFloat() < f) {
             ++i;
         }
 
@@ -526,7 +566,7 @@ public class LirothSplitterBlockEntity extends BlockEntity implements MenuProvid
 
     public void fillStackedContents(StackedContents p_58342_) {
         for(ItemStack itemstack : this.inventory) {
-            p_58342_.accountStack(itemstack);
+            p_58342_.account(itemstack.getItem().builtInRegistryHolder(), itemstack.getCount());
         }
 
     }

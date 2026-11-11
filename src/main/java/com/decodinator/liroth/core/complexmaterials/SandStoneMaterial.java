@@ -37,15 +37,15 @@ public class SandStoneMaterial implements MaterialManager.Material {
         BlockBehaviour.Properties material = createMaterial(color);
 
         this.name = name;
-        stone = LirothBlocks.registerBlock(name, new BaseBlock.Stone(material));
-        carved = LirothBlocks.registerBlock("carved_" + name, new BaseBlock.Stone(material));
-        stairs = LirothBlocks.registerBlock(name + "_stairs", new BaseStairsBlock.Stone(stone));
-        slab = LirothBlocks.registerBlock(name + "_slab", new BaseSlabBlock.Stone(stone));
-        wall = LirothBlocks.registerBlock(name + "_wall", new BaseWallBlock.Stone(stone));
-        smooth = LirothBlocks.registerBlock("smooth_" + name, new BaseBlock.Stone(material));
-        smoothStairs = LirothBlocks.registerBlock("smooth_" + name + "_stairs", new BaseStairsBlock.Stone(smooth));
-        smoothSlab = LirothBlocks.registerBlock("smooth_" + name + "_slab", new BaseSlabBlock.Stone(smooth));
-        smoothWall = LirothBlocks.registerBlock("smooth_" + name + "_wall", new BaseWallBlock.Stone(smooth));
+        stone = LirothBlocks.registerBlock(name, () -> new BaseBlock.Stone(material));
+        carved = LirothBlocks.registerBlock("carved_" + name, () -> new BaseBlock.Stone(material));
+        stairs = LirothBlocks.registerBlock(name + "_stairs", () -> new BaseStairsBlock.Stone(stone));
+        slab = LirothBlocks.registerBlock(name + "_slab", () -> new BaseSlabBlock.Stone(stone));
+        wall = LirothBlocks.registerBlock(name + "_wall", () -> new BaseWallBlock.Stone(stone));
+        smooth = LirothBlocks.registerBlock("smooth_" + name, () -> new BaseBlock.Stone(material));
+        smoothStairs = LirothBlocks.registerBlock("smooth_" + name + "_stairs", () -> new BaseStairsBlock.Stone(smooth));
+        smoothSlab = LirothBlocks.registerBlock("smooth_" + name + "_slab", () -> new BaseSlabBlock.Stone(smooth));
+        smoothWall = LirothBlocks.registerBlock("smooth_" + name + "_wall", () -> new BaseWallBlock.Stone(smooth));
 
 
         MaterialManager.register(this);
@@ -219,7 +219,7 @@ public class SandStoneMaterial implements MaterialManager.Material {
 
     @Override
     public void registerItemTags(ItemTagBootstrapContext context) {
-        context.add(ItemTags.SLABS, slab.asItem(), smoothSlab.asItem());
+        context.add(ItemTags.CONCRETE_SLABS, slab.asItem(), smoothSlab.asItem());
         context.add(ItemTags.STONE_CRAFTING_MATERIALS, stone.asItem());
         context.add(ItemTags.STONE_TOOL_MATERIALS, stone.asItem());
     }

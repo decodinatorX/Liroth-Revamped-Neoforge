@@ -14,37 +14,19 @@ import com.decodinator.liroth.client.rendering.skies.ZenithSkybox;
 import com.decodinator.liroth.client.screens.LirothSplitterScreen;
 import com.decodinator.liroth.client.screens.QuantumExtractorScreen;
 import com.decodinator.liroth.core.registry.*;
-import net.minecraft.client.model.geom.ModelLayerLocation;
-import net.minecraft.client.model.geom.builders.LayerDefinition;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.AshParticle;
 import net.minecraft.client.particle.EndRodParticle;
 import net.minecraft.client.particle.FlameParticle;
-import net.minecraft.client.renderer.DimensionSpecialEffects;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.client.renderer.block.FluidModel;
+import net.minecraft.client.resources.model.sprite.Material;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
-import net.neoforged.neoforge.client.event.RegisterDimensionSpecialEffectsEvent;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.neoforged.neoforge.client.event.RegisterFluidModelsEvent;
+import net.neoforged.neoforge.client.fluid.FluidTintSources;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.neoforge.fluids.FluidType;
-
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
-import org.joml.Matrix4f;
-
-@OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = Liroth.MOD_ID, value = Dist.CLIENT)
 public class LirothClient {
 
@@ -53,43 +35,29 @@ public class LirothClient {
     }
 
     @SubscribeEvent
-    private static void registerClientExtensions(RegisterClientExtensionsEvent event) {
-        event.registerFluidType(new IClientFluidTypeExtensions() {
-            @Override
-            public ResourceLocation getStillTexture() {
-                return LirothFluids.LIROTH_FLUID_STILL_PROP;
-            }
-            @Override
-            public ResourceLocation getFlowingTexture() {
-                return LirothFluids.LIROTH_FLUID_FLOWING_PROP;
-            }
-            @Override
-            public int getTintColor() {
-                return 0x99FFFFFF;
-            }
-        }, LirothFluids.LIROTH_FLUID_TYPE);
-
-        event.registerFluidType(new IClientFluidTypeExtensions() {
-            @Override
-            public ResourceLocation getStillTexture() {
-                return LirothFluids.MOLTEN_SPINERIOS_STILL_PROP;
-            }
-            @Override
-            public ResourceLocation getFlowingTexture() {
-                return LirothFluids.MOLTEN_SPINERIOS_FLOWING_PROP;
-            }
-        }, LirothFluids.MOLTEN_SPINERIOS_TYPE);
-
-        event.registerFluidType(IClientFluidTypeExtensions.of(LirothFluids.LIROTH_FLUID_TYPE), new FluidType(FluidType.Properties.create()));
-        event.registerFluidType(IClientFluidTypeExtensions.of(LirothFluids.MOLTEN_SPINERIOS_TYPE), new FluidType(FluidType.Properties.create()));
+    private static void registerFluidModels(RegisterFluidModelsEvent event) {
+        event.register(
+                new FluidModel.Unbaked(
+                        new Material(LirothFluids.LIROTH_FLUID_STILL_PROP),
+                        new Material(LirothFluids.LIROTH_FLUID_FLOWING_PROP),
+                        null,
+                        FluidTintSources.constant(0x99FFFFFF)),
+                LirothFluids.LIROTH_FLUID,
+                LirothFluids.FLOWING_LIROTH_FLUID);
+        event.register(
+                new FluidModel.Unbaked(
+                        new Material(LirothFluids.MOLTEN_SPINERIOS_STILL_PROP),
+                        new Material(LirothFluids.MOLTEN_SPINERIOS_FLOWING_PROP),
+                        null,
+                        null),
+                LirothFluids.MOLTEN_SPINERIOS,
+                LirothFluids.FLOWING_MOLTEN_SPINERIOS);
     }
 
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            event.register(LirothMenuTypes.LIROTH_SPLITTER_MENU, LirothSplitterScreen::new);
-            event.register(LirothMenuTypes.QUANTUM_EXTRACTOR_MENU, QuantumExtractorScreen::new);
-        }
+        event.register(LirothMenuTypes.LIROTH_SPLITTER_MENU, LirothSplitterScreen::new);
+        event.register(LirothMenuTypes.QUANTUM_EXTRACTOR_MENU, QuantumExtractorScreen::new);
     }
 
     @SubscribeEvent
@@ -124,34 +92,11 @@ public class LirothClient {
     }
 
     @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            ItemBlockRenderTypes.setRenderLayer(LirothFluids.LIROTH_FLUID, RenderType.translucent());
-            ItemBlockRenderTypes.setRenderLayer(LirothFluids.FLOWING_LIROTH_FLUID, RenderType.translucent());
-        });
-        registerLayerDefinitions(ClientHooks::registerLayerDefinition);
-    }
-
-    @SubscribeEvent
-    private static void registerDimensionSpecialEffects(RegisterDimensionSpecialEffectsEvent event) {
-        DimensionSpecialEffects cloudlessOverworld = new CloudlessOverworldEffects();
-        event.register(Liroth.C.mk("damnation"), cloudlessOverworld);
-        event.register(Liroth.C.mk("jalsphire"), cloudlessOverworld);
-        event.register(Liroth.C.mk("devastation"), cloudlessOverworld);
-    }
-
-    private static final class CloudlessOverworldEffects extends DimensionSpecialEffects.OverworldEffects {
-        @Override
-        public boolean renderClouds(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, double camX, double camY, double camZ, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-            return true;
-        }
-    }
-
-    public static void registerLayerDefinitions(final BiConsumer<ModelLayerLocation, Supplier<LayerDefinition>> consumer) {
-        consumer.accept(LirothModelLayers.BEAM_LASER_PROJECTILE, BeamLaserProjectileModel::createBodyLayer);
-        consumer.accept(LirothModelLayers.PIER_PEEP, PierPeepModel::getTexturedModelData);
-        consumer.accept(LirothModelLayers.SHADE, ShadeModel::getTexturedModelData);
-        consumer.accept(LirothModelLayers.FREAKSHOW, FreakshowModel::getTexturedModelData);
-        consumer.accept(LirothModelLayers.VILE_SHARK, VileSharkModel::getTexturedModelData);
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(LirothModelLayers.BEAM_LASER_PROJECTILE, BeamLaserProjectileModel::createBodyLayer);
+        event.registerLayerDefinition(LirothModelLayers.PIER_PEEP, PierPeepModel::getTexturedModelData);
+        event.registerLayerDefinition(LirothModelLayers.SHADE, ShadeModel::getTexturedModelData);
+        event.registerLayerDefinition(LirothModelLayers.FREAKSHOW, FreakshowModel::getTexturedModelData);
+        event.registerLayerDefinition(LirothModelLayers.VILE_SHARK, VileSharkModel::getTexturedModelData);
     }
 }

@@ -3,6 +3,7 @@ package com.decodinator.liroth.core.fluids;
 import com.decodinator.liroth.core.registry.LirothBlocks;
 import com.decodinator.liroth.core.registry.LirothFluids;
 import com.decodinator.liroth.core.registry.LirothItems;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -47,17 +48,17 @@ public abstract class MoltenSpinerios extends WaterTypeFluid {
         }
 
         @Override
+        protected boolean canConvertToSource(ServerLevel level) {
+            return false;
+        }
+
+        @Override
         public int getAmount(FluidState fluidState) {
             return fluidState.getValue(LEVEL);
         }
 
         @Override
         public boolean isSource(FluidState fluidState) {
-            return false;
-        }
-
-        @Override
-        protected boolean canConvertToSource(Level var1) {
             return false;
         }
     }
@@ -74,7 +75,7 @@ public abstract class MoltenSpinerios extends WaterTypeFluid {
         }
 
         @Override
-        protected boolean canConvertToSource(Level var1) {
+        protected boolean canConvertToSource(ServerLevel var1) {
             return true;
         }
     }

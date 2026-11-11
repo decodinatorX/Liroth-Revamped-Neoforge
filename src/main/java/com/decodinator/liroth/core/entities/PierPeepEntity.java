@@ -1,7 +1,6 @@
 package com.decodinator.liroth.core.entities;
 
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
@@ -17,9 +16,8 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Vex;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.raid.Raider;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
@@ -60,7 +58,7 @@ public class PierPeepEntity extends Vex {
     }
 
     @Override
-    public boolean causeFallDamage(float fallDistance, float multiplier, DamageSource source) {
+    public boolean causeFallDamage(double fallDistance, float multiplier, DamageSource source) {
         return false;
     }
 
@@ -102,12 +100,7 @@ public class PierPeepEntity extends Vex {
         @Override
         public boolean canUse() {
             LivingEntity livingentity = PierPeepEntity.this.getTarget();
-            return livingentity != null
-                    && livingentity.isAlive()
-                    && !PierPeepEntity.this.getMoveControl().hasWanted()
-                    && PierPeepEntity.this.random.nextInt(reducedTickDelay(7)) == 0
-                    ? PierPeepEntity.this.distanceToSqr(livingentity) > 4.0
-                    : false;
+            return livingentity != null && livingentity.isAlive() && !PierPeepEntity.this.getMoveControl().hasWanted() && PierPeepEntity.this.random.nextInt(reducedTickDelay(7)) == 0 && PierPeepEntity.this.distanceToSqr(livingentity) > 4.0;
         }
 
         @Override
@@ -141,7 +134,9 @@ public class PierPeepEntity extends Vex {
             LivingEntity livingentity = PierPeepEntity.this.getTarget();
             if (livingentity != null) {
                 if (PierPeepEntity.this.getBoundingBox().intersects(livingentity.getBoundingBox())) {
-                    PierPeepEntity.this.doHurtTarget(livingentity);
+                    if (PierPeepEntity.this.level() instanceof ServerLevel serverLevel) {
+                        PierPeepEntity.this.doHurtTarget(serverLevel, livingentity);
+                    }
                     PierPeepEntity.this.setIsCharging(false);
                 } else {
                     double d0 = PierPeepEntity.this.distanceToSqr(livingentity);

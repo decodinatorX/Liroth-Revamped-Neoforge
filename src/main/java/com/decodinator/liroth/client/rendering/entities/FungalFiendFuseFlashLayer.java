@@ -1,31 +1,46 @@
 package com.decodinator.liroth.client.rendering.entities;
 
 import com.decodinator.liroth.core.entities.FungalFiendEntity;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import com.geckolib.animatable.GeoAnimatable;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.dataticket.DataTicket;
+import com.geckolib.renderer.base.GeoRenderState;
+import com.geckolib.renderer.base.RenderPassInfo;
+import com.geckolib.renderer.layer.GeoRenderLayer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
-import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
-import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
-public class FungalFiendFuseFlashLayer extends GeoRenderLayer<FungalFiendEntity> {
-    public FungalFiendFuseFlashLayer(GeoEntityRenderer<FungalFiendEntity> renderer) {
+public class FungalFiendFuseFlashLayer extends GeoRenderLayer {
+    static final DataTicket<Float> SWELLING = DataTickets.create("liroth_fungal_fiend_swelling", Float.class);
+
+    public FungalFiendFuseFlashLayer(FungalFiendRenderer renderer) {
         super(renderer);
     }
 
     @Override
-    public void render(PoseStack poseStack, FungalFiendEntity entity, BakedGeoModel bakedModel, @Nullable RenderType renderType, MultiBufferSource bufferSource, @Nullable VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
-        float swell = Mth.clamp(entity.getSwelling(partialTick), 0.0F, 1.0F);
-        float flash = (int) (swell * 10.0F) % 2 == 0 ? 0.0F : Mth.clamp(swell, 0.5F, 1.0F);
+    public void addRenderData(GeoAnimatable animatable, Object relatedObject, GeoRenderState renderState, float partialTick) {
+        FungalFiendEntity fungalFiend = (FungalFiendEntity) animatable;
+        renderState.addGeckolibData(SWELLING, Mth.clamp(fungalFiend.getSwelling(partialTick), 0.0F, 1.0F));
+    }
+
+    @Override
+    public void submitRenderTask(RenderPassInfo renderPassInfo, SubmitNodeCollector renderTasks) {
+        GeoRenderState state = renderPassInfo.renderState();
+        float swell = state.getOrDefaultGeckolibData(SWELLING, 0.0F);
+        float flash = (int)(swell * 10.0F) % 2 == 0 ? 0.0F : Mth.clamp(swell, 0.5F, 1.0F);
         if (flash <= 0.0F) {
             return;
         }
 
-        RenderType flashType = RenderType.entityTranslucent(getRenderer().getTextureLocation(entity));
-        getRenderer().reRender(bakedModel, poseStack, bufferSource, entity, flashType, bufferSource.getBuffer(flashType), partialTick, packedLight, LivingEntityRenderer.getOverlayCoords(entity, flash), 0xFFFFFFFF);
+        renderTasks.submitCustomGeometry(renderPassInfo.poseStack(), RenderTypes.entityTranslucent(getRenderer().getTextureLocation(state)), (pose, vertexConsumer) -> {
+            var poseStack = renderPassInfo.poseStack();
+            poseStack.pushPose();
+            poseStack.last().set(pose);
+            renderPassInfo.renderPosed(() -> renderPassInfo.model().render(renderPassInfo, vertexConsumer, renderPassInfo.packedLight(), LivingEntityRenderer.getOverlayCoords((LivingEntityRenderState) state, flash), 0xFFFFFFFF));
+            poseStack.popPose();
+        });
     }
 }

@@ -2,30 +2,31 @@ package com.decodinator.liroth.core.blocks;
 
 import com.decodinator.liroth.core.blockentities.LirothianPetroleumCampfireBlockEntity;
 import com.decodinator.liroth.core.registry.LirothBlockEntities;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.crafting.CampfireCookingRecipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipePropertySet;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -34,11 +35,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -46,16 +46,14 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
-import java.util.Optional;
 
 public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements SimpleWaterloggedBlock {
     protected static final VoxelShape SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 7.0D, 16.0D);
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
     public static final BooleanProperty SIGNAL_FIRE = BlockStateProperties.SIGNAL_FIRE;
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     private static final VoxelShape VIRTUAL_FENCE_POST = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
-    private static final int SMOKE_DISTANCE = 5;
     private final boolean spawnParticles;
     private final int fireDamage;
 
@@ -66,15 +64,16 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
         this.registerDefaultState(this.stateDefinition.any().setValue(LIT, Boolean.valueOf(true)).setValue(SIGNAL_FIRE, Boolean.valueOf(false)).setValue(WATERLOGGED, Boolean.valueOf(false)).setValue(FACING, Direction.NORTH));
     }
 
-    public InteractionResult use(BlockState p_51274_, Level p_51275_, BlockPos p_51276_, Player p_51277_, InteractionHand p_51278_, BlockHitResult p_51279_) {
+    @Override
+    protected InteractionResult useItemOn(ItemStack itemStack, BlockState p_51274_, Level p_51275_, BlockPos p_51276_, Player p_51277_, InteractionHand p_51278_, BlockHitResult p_51279_) {
         BlockEntity blockentity = p_51275_.getBlockEntity(p_51276_);
         if (blockentity instanceof LirothianPetroleumCampfireBlockEntity campfireblockentity) {
             ItemStack itemstack = p_51277_.getItemInHand(p_51278_);
-            Optional<RecipeHolder<CampfireCookingRecipe>> optional = campfireblockentity.getCookableRecipe(itemstack);
-            if (optional.isPresent()) {
-                if (!p_51275_.isClientSide && campfireblockentity.placeFood(p_51277_, p_51277_.getAbilities().instabuild ? itemstack.copy() : itemstack, optional.get().value().getCookingTime())) {
+            if (p_51275_.recipeAccess().propertySet(RecipePropertySet.CAMPFIRE_INPUT).test(itemstack)) {
+                if (p_51275_ instanceof ServerLevel serverLevel
+                        && campfireblockentity.placeFood(serverLevel, p_51277_, itemstack)) {
                     p_51277_.awardStat(Stats.INTERACT_WITH_CAMPFIRE);
-                    return InteractionResult.SUCCESS;
+                    return InteractionResult.SUCCESS_SERVER;
                 }
 
                 return InteractionResult.CONSUME;
@@ -84,23 +83,13 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
         return InteractionResult.PASS;
     }
 
-    public void entityInside(BlockState p_51269_, Level p_51270_, BlockPos p_51271_, Entity p_51272_) {
+    @Override
+    protected void entityInside(BlockState p_51269_, Level p_51270_, BlockPos p_51271_, Entity p_51272_, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
         if (p_51269_.getValue(LIT) && p_51272_ instanceof LivingEntity ) {
             p_51272_.hurt(p_51270_.damageSources().inFire(), (float)this.fireDamage);
         }
 
-        super.entityInside(p_51269_, p_51270_, p_51271_, p_51272_);
-    }
-
-    public void onRemove(BlockState p_51281_, Level p_51282_, BlockPos p_51283_, BlockState p_51284_, boolean p_51285_) {
-        if (!p_51281_.is(p_51284_.getBlock())) {
-            BlockEntity blockentity = p_51282_.getBlockEntity(p_51283_);
-            if (blockentity instanceof LirothianPetroleumCampfireBlockEntity) {
-                Containers.dropContents(p_51282_, p_51283_, ((LirothianPetroleumCampfireBlockEntity)blockentity).getItems());
-            }
-
-            super.onRemove(p_51281_, p_51282_, p_51283_, p_51284_, p_51285_);
-        }
+        super.entityInside(p_51269_, p_51270_, p_51271_, p_51272_, effectApplier, isPrecise);
     }
 
     @Nullable
@@ -111,12 +100,13 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
         return this.defaultBlockState().setValue(WATERLOGGED, Boolean.valueOf(flag)).setValue(SIGNAL_FIRE, Boolean.valueOf(this.isSmokeSource(levelaccessor.getBlockState(blockpos.below())))).setValue(LIT, Boolean.valueOf(!flag)).setValue(FACING, p_51240_.getHorizontalDirection());
     }
 
-    public BlockState updateShape(BlockState p_51298_, Direction p_51299_, BlockState p_51300_, LevelAccessor p_51301_, BlockPos p_51302_, BlockPos p_51303_) {
+    @Override
+    protected BlockState updateShape(BlockState p_51298_, LevelReader level, ScheduledTickAccess ticks, BlockPos p_51302_, Direction p_51299_, BlockPos p_51303_, BlockState p_51300_, RandomSource random) {
         if (p_51298_.getValue(WATERLOGGED)) {
-            p_51301_.scheduleTick(p_51302_, Fluids.WATER, Fluids.WATER.getTickDelay(p_51301_));
+            ticks.scheduleTick(p_51302_, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
-        return p_51299_ == Direction.DOWN ? p_51298_.setValue(SIGNAL_FIRE, Boolean.valueOf(this.isSmokeSource(p_51300_))) : super.updateShape(p_51298_, p_51299_, p_51300_, p_51301_, p_51302_, p_51303_);
+        return p_51299_ == Direction.DOWN ? p_51298_.setValue(SIGNAL_FIRE, this.isSmokeSource(p_51300_)) : super.updateShape(p_51298_, level, ticks, p_51302_, p_51299_, p_51303_, p_51300_, random);
     }
 
     private boolean isSmokeSource(BlockState p_51324_) {
@@ -125,11 +115,6 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
 
     public VoxelShape getShape(BlockState p_51309_, BlockGetter p_51310_, BlockPos p_51311_, CollisionContext p_51312_) {
         return SHAPE;
-    }
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
-        return null;
     }
 
     public RenderShape getRenderShape(BlockState p_51307_) {
@@ -187,7 +172,7 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
 
     public void onProjectileHit(Level p_51244_, BlockState p_51245_, BlockHitResult p_51246_, Projectile p_51247_) {
         BlockPos blockpos = p_51246_.getBlockPos();
-        if (!p_51244_.isClientSide && p_51247_.isOnFire() && p_51247_.mayInteract(p_51244_, blockpos) && !p_51245_.getValue(LIT) && !p_51245_.getValue(WATERLOGGED)) {
+        if (p_51244_ instanceof ServerLevel serverLevel && p_51247_.isOnFire() && p_51247_.mayInteract(serverLevel, blockpos) && !p_51245_.getValue(LIT) && !p_51245_.getValue(WATERLOGGED)) {
             p_51244_.setBlock(blockpos, p_51245_.setValue(BlockStateProperties.LIT, Boolean.valueOf(true)), 11);
         }
 
@@ -247,20 +232,11 @@ public class LirothianPetroleumCampfireBlock extends BaseEntityBlock implements 
 
     @Nullable
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level p_152755_, BlockState p_152756_, BlockEntityType<T> p_152757_) {
-        if (p_152755_.isClientSide) {
+        if (!(p_152755_ instanceof ServerLevel)) {
             return p_152756_.getValue(LIT) ? createTickerHelper(p_152757_, LirothBlockEntities.LIROTHIAN_PETROLEUM_CAMPFIRE, LirothianPetroleumCampfireBlockEntity::particleTick) : null;
         } else {
             return p_152756_.getValue(LIT) ? createTickerHelper(p_152757_, LirothBlockEntities.LIROTHIAN_PETROLEUM_CAMPFIRE, LirothianPetroleumCampfireBlockEntity::cookTick) : createTickerHelper(p_152757_, LirothBlockEntities.LIROTHIAN_PETROLEUM_CAMPFIRE, LirothianPetroleumCampfireBlockEntity::cooldownTick);
         }
     }
 
-    public boolean isPathfindable(BlockState p_51264_, BlockGetter p_51265_, BlockPos p_51266_, PathComputationType p_51267_) {
-        return false;
-    }
-
-    public static boolean canLight(BlockState p_51322_) {
-        return p_51322_.is(BlockTags.CAMPFIRES, (p_51262_) -> {
-            return p_51262_.hasProperty(WATERLOGGED) && p_51262_.hasProperty(LIT);
-        }) && !p_51322_.getValue(WATERLOGGED) && !p_51322_.getValue(LIT);
-    }
 }

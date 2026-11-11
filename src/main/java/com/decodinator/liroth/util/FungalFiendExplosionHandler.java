@@ -19,7 +19,7 @@ public final class FungalFiendExplosionHandler {
 
     @SubscribeEvent
     public static void onFungalFiendExplosion(ExplosionEvent.Detonate event) {
-        if (!(event.getExplosion().getDirectSourceEntity() instanceof FungalFiendEntity) || event.getLevel().isClientSide) {
+        if (!(event.getExplosion().getDirectSourceEntity() instanceof FungalFiendEntity) || event.getLevel().isClientSide()) {
             return;
         }
 

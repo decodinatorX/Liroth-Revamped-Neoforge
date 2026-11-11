@@ -8,69 +8,28 @@ import com.decodinator.liroth.core.registry.LirothBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DripstoneThickness;
+import net.minecraft.world.level.block.state.properties.SpeleothemThickness;
 
 public class PetrifiedCrystalHelper {
-    protected static double getDripstoneHeight(double p_159624_, double p_159625_, double p_159626_, double p_159627_) {
-        if (p_159624_ < p_159627_) {
-            p_159624_ = p_159627_;
-        }
-
-        double d1 = p_159624_ / p_159625_ * 0.384D;
-        double d2 = 0.75D * Math.pow(d1, 1.3333333333333333D);
-        double d3 = Math.pow(d1, 0.6666666666666666D);
-        double d4 = 0.3333333333333333D * Math.log(d1);
-        double d5 = p_159626_ * (d2 - d3 - d4);
-        d5 = Math.max(d5, 0.0D);
-        return d5 / 0.384D * p_159625_;
-    }
-
-    protected static boolean isCircleMostlyEmbeddedInStone(WorldGenLevel p_159640_, BlockPos p_159641_, int p_159642_) {
-        if (isEmptyOrWaterOrLava(p_159640_, p_159641_)) {
-            return false;
-        } else {
-            float f1 = 6.0F / (float)p_159642_;
-
-            for(float f2 = 0.0F; f2 < ((float)Math.PI * 2F); f2 += f1) {
-                int i = (int)(Mth.cos(f2) * (float)p_159642_);
-                int j = (int)(Mth.sin(f2) * (float)p_159642_);
-                if (isEmptyOrWaterOrLava(p_159640_, p_159641_.offset(i, 0, j))) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-    }
-
-    protected static boolean isEmptyOrWater(LevelAccessor p_159629_, BlockPos p_159630_) {
-        return p_159629_.isStateAtPosition(p_159630_, PetrifiedCrystalHelper::isEmptyOrWater);
-    }
-
-    protected static boolean isEmptyOrWaterOrLava(LevelAccessor p_159660_, BlockPos p_159661_) {
-        return p_159660_.isStateAtPosition(p_159661_, PetrifiedCrystalHelper::isEmptyOrWaterOrLava);
-    }
 
     protected static void buildBaseToTipColumn(Direction p_159652_, int p_159653_, boolean p_159654_, Consumer<BlockState> p_159655_) {
         if (p_159653_ >= 3) {
-            p_159655_.accept(createPointedDripstone(p_159652_, DripstoneThickness.BASE));
+            p_159655_.accept(createPointedDripstone(p_159652_, SpeleothemThickness.BASE));
 
             for(int i = 0; i < p_159653_ - 3; ++i) {
-                p_159655_.accept(createPointedDripstone(p_159652_, DripstoneThickness.MIDDLE));
+                p_159655_.accept(createPointedDripstone(p_159652_, SpeleothemThickness.MIDDLE));
             }
         }
 
         if (p_159653_ >= 2) {
-            p_159655_.accept(createPointedDripstone(p_159652_, DripstoneThickness.FRUSTUM));
+            p_159655_.accept(createPointedDripstone(p_159652_, SpeleothemThickness.FRUSTUM));
         }
 
         if (p_159653_ >= 1) {
-            p_159655_.accept(createPointedDripstone(p_159652_, p_159654_ ? DripstoneThickness.TIP_MERGE : DripstoneThickness.TIP));
+            p_159655_.accept(createPointedDripstone(p_159652_, p_159654_ ? SpeleothemThickness.TIP_MERGE : SpeleothemThickness.TIP));
         }
 
     }
@@ -99,12 +58,8 @@ public class PetrifiedCrystalHelper {
         }
     }
 
-    private static BlockState createPointedDripstone(Direction p_159657_, DripstoneThickness p_159658_) {
+    private static BlockState createPointedDripstone(Direction p_159657_, SpeleothemThickness p_159658_) {
         return LirothBlocks.POINTED_PETRIFIED_CRYSTAL.defaultBlockState().setValue(CustomPointedCrystal.TIP_DIRECTION, p_159657_).setValue(CustomPointedCrystal.THICKNESS, p_159658_);
-    }
-
-    public static boolean isDripstoneBaseOrLava(BlockState p_159650_) {
-        return isDripstoneBase(p_159650_) || p_159650_.is(Blocks.LAVA);
     }
 
     public static boolean isDripstoneBase(BlockState p_159663_) {
@@ -115,11 +70,4 @@ public class PetrifiedCrystalHelper {
         return p_159665_.isAir() || p_159665_.is(Blocks.WATER);
     }
 
-    public static boolean isNeitherEmptyNorWater(BlockState p_203131_) {
-        return !p_203131_.isAir() && !p_203131_.is(Blocks.WATER);
-    }
-
-    public static boolean isEmptyOrWaterOrLava(BlockState p_159667_) {
-        return p_159667_.isAir() || p_159667_.is(Blocks.WATER) || p_159667_.is(Blocks.LAVA);
-    }
 }

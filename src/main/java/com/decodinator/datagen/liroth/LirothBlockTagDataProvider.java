@@ -197,14 +197,14 @@ public class LirothBlockTagDataProvider extends WoverTagProvider.ForBlocks {
 
         context.add(BlockTags.ANVIL, LirothBlocks.LIROTHIAN_COBALT.anvilBlock);
 
-        context.add(BlockTags.COAL_ORES, LirothBlocks.SPINERIOS_COAL_ORE);
+//        context.add(BlockTags.COAL_ORES, LirothBlocks.SPINERIOS_COAL_ORE);
         context.add(BlockTags.COPPER_ORES, LirothBlocks.SPINERIOS_COPPER_ORE);
-        context.add(BlockTags.DIAMOND_ORES, LirothBlocks.SPINERIOS_DIAMOND_ORE);
-        context.add(BlockTags.EMERALD_ORES, LirothBlocks.SPINERIOS_EMERALD_ORE);
+//        context.add(BlockTags.DIAMOND_ORES, LirothBlocks.SPINERIOS_DIAMOND_ORE);
+//        context.add(BlockTags.EMERALD_ORES, LirothBlocks.SPINERIOS_EMERALD_ORE);
         context.add(BlockTags.GOLD_ORES, LirothBlocks.SPINERIOS_GOLD_ORE);
         context.add(BlockTags.IRON_ORES, LirothBlocks.SPINERIOS_IRON_ORE);
-        context.add(BlockTags.LAPIS_ORES, LirothBlocks.SPINERIOS_LAPIS_ORE);
-        context.add(BlockTags.REDSTONE_ORES, LirothBlocks.SPINERIOS_REDSTONE_ORE);
+//        context.add(BlockTags.LAPIS_ORES, LirothBlocks.SPINERIOS_LAPIS_ORE);
+//        context.add(BlockTags.REDSTONE_ORES, LirothBlocks.SPINERIOS_REDSTONE_ORE);
 
         context.add(BlockTags.FLOWERS, LirothBlocks.LIROTH_ROSE);
         context.add(BlockTags.FLOWERS, LirothBlocks.WILITING_LIROTH_ROSE);
@@ -267,7 +267,7 @@ public class LirothBlockTagDataProvider extends WoverTagProvider.ForBlocks {
 
         context.add(BlockTags.WALLS, LirothBlocks.PETRIFIED_DAMNATION_BRICK_WALL);
 
-        context.add(Tags.Blocks.COBBLESTONES, LirothBlocks.LIROTH_COBBLESTONE.stone);
+/*        context.add(Tags.Blocks.COBBLESTONES, LirothBlocks.LIROTH_COBBLESTONE.stone);
         context.add(Tags.Blocks.COBBLESTONES, LirothBlocks.SPINERIOS_COBBLESTONE.stone);
         context.add(Tags.Blocks.COBBLESTONES, LirothBlocks.CHARRED_LIROTH.stone);
 
@@ -281,5 +281,5 @@ public class LirothBlockTagDataProvider extends WoverTagProvider.ForBlocks {
         context.add(Tags.Blocks.ORES_IN_GROUND_STONE, LirothBlocks.LIROTH_GEM.ore);
         context.add(Tags.Blocks.ORES_IN_GROUND_STONE, LirothBlocks.TOURMALINE.ore);
         context.add(Tags.Blocks.ORES_IN_GROUND_STONE, LirothBlocks.TOURMALINE_ORE);
-    }
+*/    }
 }

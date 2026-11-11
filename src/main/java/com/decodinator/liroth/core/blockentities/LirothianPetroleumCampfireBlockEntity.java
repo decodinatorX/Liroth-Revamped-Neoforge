@@ -2,6 +2,7 @@ package com.decodinator.liroth.core.blockentities;
 
 import com.decodinator.liroth.core.blocks.LirothianPetroleumCampfireBlock;
 import com.decodinator.liroth.core.registry.LirothBlockEntities;
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -9,8 +10,10 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.Clearable;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
@@ -21,6 +24,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -37,7 +43,11 @@ public class LirothianPetroleumCampfireBlockEntity extends BlockEntity implement
         super(LirothBlockEntities.LIROTHIAN_PETROLEUM_CAMPFIRE, p_155301_, p_155302_);
     }
 
-    public static void cookTick(Level p_155307_, BlockPos p_155308_, BlockState p_155309_, LirothianPetroleumCampfireBlockEntity p_155310_) {
+    public static void cookTick(Level level, BlockPos p_155308_, BlockState p_155309_, LirothianPetroleumCampfireBlockEntity p_155310_) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
         boolean flag = false;
 
         for(int i = 0; i < p_155310_.items.size(); ++i) {
@@ -47,19 +57,19 @@ public class LirothianPetroleumCampfireBlockEntity extends BlockEntity implement
                 int j = p_155310_.cookingProgress[i]++;
                 if (p_155310_.cookingProgress[i] >= p_155310_.cookingTime[i]) {
                     SingleRecipeInput container = new SingleRecipeInput(itemstack);
-                    ItemStack itemstack1 = p_155310_.quickCheck.getRecipeFor(container, p_155307_).map((p_270054_) -> {
-                        return p_270054_.value().assemble(container, p_155307_.registryAccess());
+                    ItemStack itemstack1 = p_155310_.quickCheck.getRecipeFor(container, serverLevel).map((p_270054_) -> {
+                        return p_270054_.value().assemble(container);
                     }).orElse(itemstack);
-                    Containers.dropItemStack(p_155307_, (double)p_155308_.getX(), (double)p_155308_.getY(), (double)p_155308_.getZ(), itemstack1);
+                    Containers.dropItemStack(serverLevel, (double)p_155308_.getX(), (double)p_155308_.getY(), (double)p_155308_.getZ(), itemstack1);
                     p_155310_.items.set(i, ItemStack.EMPTY);
-                    p_155307_.sendBlockUpdated(p_155308_, p_155309_, p_155309_, 3);
-                    p_155307_.gameEvent(GameEvent.BLOCK_CHANGE, p_155308_, GameEvent.Context.of(p_155309_));
+                    serverLevel.sendBlockUpdated(p_155308_, p_155309_, p_155309_, 3);
+                    serverLevel.gameEvent(GameEvent.BLOCK_CHANGE, p_155308_, GameEvent.Context.of(p_155309_));
                 }
             }
         }
 
         if (flag) {
-            setChanged(p_155307_, p_155308_, p_155309_);
+            setChanged(serverLevel, p_155308_, p_155309_);
         }
 
     }
@@ -81,7 +91,7 @@ public class LirothianPetroleumCampfireBlockEntity extends BlockEntity implement
     }
 
     public static void particleTick(Level p_155319_, BlockPos p_155320_, BlockState p_155321_, LirothianPetroleumCampfireBlockEntity p_155322_) {
-        RandomSource randomsource = p_155319_.random;
+        RandomSource randomsource = p_155319_.getRandom();
         if (randomsource.nextFloat() < 0.11F) {
             for(int i = 0; i < randomsource.nextInt(2) + 2; ++i) {
                 LirothianPetroleumCampfireBlock.makeParticles(p_155319_, p_155320_, p_155321_.getValue(LirothianPetroleumCampfireBlock.SIGNAL_FIRE), false);
@@ -110,27 +120,30 @@ public class LirothianPetroleumCampfireBlockEntity extends BlockEntity implement
         return this.items;
     }
 
-    public void load(CompoundTag p_155312_, HolderLookup.Provider registries) {
-        super.loadAdditional(p_155312_, registries);
-        this.items.clear();
-        ContainerHelper.loadAllItems(p_155312_, this.items, registries);
-        if (p_155312_.contains("CookingTimes", 11)) {
-            int[] aint = p_155312_.getIntArray("CookingTimes");
-            System.arraycopy(aint, 0, this.cookingProgress, 0, Math.min(this.cookingTime.length, aint.length));
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (this.level != null) {
+            Containers.dropContents(this.level, pos, this.getItems());
         }
-
-        if (p_155312_.contains("CookingTotalTimes", 11)) {
-            int[] aint1 = p_155312_.getIntArray("CookingTotalTimes");
-            System.arraycopy(aint1, 0, this.cookingTime, 0, Math.min(this.cookingTime.length, aint1.length));
-        }
-
     }
 
-    protected void saveAdditional(CompoundTag p_187486_, HolderLookup.Provider registries) {
-        super.saveAdditional(p_187486_, registries);
-        ContainerHelper.saveAllItems(p_187486_, this.items, registries);
-        p_187486_.putIntArray("CookingTimes", this.cookingProgress);
-        p_187486_.putIntArray("CookingTotalTimes", this.cookingTime);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        this.items.clear();
+        ContainerHelper.loadAllItems(input, this.items);
+        input.getIntArray("CookingTimes").ifPresentOrElse(
+                times -> System.arraycopy(times, 0, this.cookingProgress, 0, Math.min(this.cookingProgress.length, times.length)),
+                () -> java.util.Arrays.fill(this.cookingProgress, 0));
+        input.getIntArray("CookingTotalTimes").ifPresentOrElse(
+                times -> System.arraycopy(times, 0, this.cookingTime, 0, Math.min(this.cookingTime.length, times.length)),
+                () -> java.util.Arrays.fill(this.cookingTime, 0));
+    }
+
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        ContainerHelper.saveAllItems(output, this.items, true);
+        output.putIntArray("CookingTimes", this.cookingProgress);
+        output.putIntArray("CookingTotalTimes", this.cookingTime);
     }
 
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
@@ -139,23 +152,27 @@ public class LirothianPetroleumCampfireBlockEntity extends BlockEntity implement
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag compoundtag = new CompoundTag();
-        ContainerHelper.saveAllItems(compoundtag, this.items, true, registries);
-        return compoundtag;
+        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(this.problemPath(), LogUtils.getLogger())) {
+            TagValueOutput output = TagValueOutput.createWithContext(reporter, registries);
+            ContainerHelper.saveAllItems(output, this.items, true);
+            return output.buildResult();
+        }
     }
 
-    public Optional<RecipeHolder<CampfireCookingRecipe>> getCookableRecipe(ItemStack stack) {
-        return this.items.stream().noneMatch(ItemStack::isEmpty) ? Optional.empty() : this.quickCheck.getRecipeFor(new SingleRecipeInput(stack), this.level);
-    }
-
-    public boolean placeFood(@Nullable Entity p_238285_, ItemStack p_238286_, int p_238287_) {
+    public boolean placeFood(ServerLevel level, @Nullable net.minecraft.world.entity.LivingEntity sourceEntity, ItemStack placeItem) {
         for(int i = 0; i < this.items.size(); ++i) {
             ItemStack itemstack = this.items.get(i);
             if (itemstack.isEmpty()) {
-                this.cookingTime[i] = p_238287_;
+                SingleRecipeInput input = new SingleRecipeInput(placeItem);
+                Optional<RecipeHolder<CampfireCookingRecipe>> recipe = level.recipeAccess().getRecipeFor(RecipeType.CAMPFIRE_COOKING, input, level);
+                if (recipe.isEmpty()) {
+                    return false;
+                }
+
+                this.cookingTime[i] = recipe.get().value().cookingTime();
                 this.cookingProgress[i] = 0;
-                this.items.set(i, p_238286_.split(1));
-                this.level.gameEvent(GameEvent.BLOCK_CHANGE, this.getBlockPos(), GameEvent.Context.of(p_238285_, this.getBlockState()));
+                this.items.set(i, placeItem.consumeAndReturn(1, sourceEntity));
+                level.gameEvent(GameEvent.BLOCK_CHANGE, this.getBlockPos(), GameEvent.Context.of(sourceEntity, this.getBlockState()));
                 this.markUpdated();
                 return true;
             }

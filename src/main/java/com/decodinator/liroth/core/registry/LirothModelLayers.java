@@ -2,11 +2,7 @@ package com.decodinator.liroth.core.registry;
 
 import com.decodinator.liroth.Liroth;
 import net.minecraft.client.model.geom.ModelLayerLocation;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-
-@OnlyIn(Dist.CLIENT)
+import net.minecraft.resources.Identifier;
 public class LirothModelLayers {
 
     public static final ModelLayerLocation BEAM_LASER_PROJECTILE = make("beam_laser_projectile");
@@ -22,9 +18,8 @@ public class LirothModelLayers {
         return new ModelLayerLocation(prefix(name), layer);
     }
 
-    public static ResourceLocation prefix(String path) {
-        return ResourceLocation.fromNamespaceAndPath(Liroth.MOD_ID, path);
+    public static Identifier prefix(String path) {
+        return Identifier.fromNamespaceAndPath(Liroth.MOD_ID, path);
     }
 
-    public static void init(){}
 }

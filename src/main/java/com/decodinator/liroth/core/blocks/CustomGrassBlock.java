@@ -11,25 +11,28 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.placement.VegetationPlacements;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.BonemealSource;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
-import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConfiguration;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.common.ItemAbility;
 
 public class CustomGrassBlock extends CustomSpreadableBlock implements BonemealableBlock {
+    private static final ItemAbility HOE_TILL = ItemAbility.get("hoe_till");
+    private static final ItemAbility SHOVEL_FLATTEN = ItemAbility.get("shovel_flatten");
     public Supplier<Block> tilled;
     public Supplier<Block> pathed;
+
     public CustomGrassBlock(BlockBehaviour.Properties p_53685_, Block theDirt, Supplier<Block> theTilled, Supplier<Block> thePathed) {
         super(p_53685_);
         dirtBlock = theDirt;
@@ -45,65 +48,72 @@ public class CustomGrassBlock extends CustomSpreadableBlock implements Bonemeala
 
     @Override
     public BlockState getToolModifiedState(BlockState state, UseOnContext context, ItemAbility itemAbility, boolean simulate) {
-        if (itemAbility == ItemAbilities.HOE_TILL) {
+        if (itemAbility == HOE_TILL) {
             return tilled.get().defaultBlockState();
         }
-        if (itemAbility == ItemAbilities.SHOVEL_FLATTEN) {
+        if (itemAbility == SHOVEL_FLATTEN) {
             return pathed.get().defaultBlockState();
         }
         return super.getToolModifiedState(state, context, itemAbility, simulate);
     }
 
     @Override
-    public boolean isValidBonemealTarget(LevelReader levelReader, BlockPos blockPos, BlockState blockState) {
-        return levelReader.getBlockState(blockPos.above()).isAir();
+    public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, BonemealSource source) {
+        return level.getBlockState(pos.above()).isAir() && level.isInsideBuildHeight(pos.above());
     }
 
-    public boolean isBonemealSuccess(Level p_221275_, RandomSource p_221276_, BlockPos p_221277_, BlockState p_221278_) {
+    @Override
+    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos pos, BlockState state, BonemealSource source) {
         return true;
     }
 
-    public void performBonemeal(ServerLevel p_221270_, RandomSource p_221271_, BlockPos p_221272_, BlockState p_221273_) {
-        BlockPos blockpos = p_221272_.above();
-        BlockState blockstate = Blocks.SHORT_GRASS.defaultBlockState();
-        Optional<Holder.Reference<PlacedFeature>> optional = p_221270_.registryAccess().registryOrThrow(Registries.PLACED_FEATURE).getHolder(VegetationPlacements.GRASS_BONEMEAL);
+    @Override
+    public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state, BonemealSource source) {
+        BlockPos above = pos.above();
+        Optional<Holder.Reference<PlacedFeature>> grassFeature = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE).get(VegetationPlacements.GRASS_BONEMEAL);
 
         label46:
-        for(int i = 0; i < 128; ++i) {
-            BlockPos blockpos1 = blockpos;
+        for (int attempt = 0; attempt < 128; attempt++) {
+            BlockPos testPos = above;
 
-            for(int j = 0; j < i / 16; ++j) {
-                blockpos1 = blockpos1.offset(p_221271_.nextInt(3) - 1, (p_221271_.nextInt(3) - 1) * p_221271_.nextInt(3) / 2, p_221271_.nextInt(3) - 1);
-                if (!p_221270_.getBlockState(blockpos1.below()).is(this) || p_221270_.getBlockState(blockpos1).isCollisionShapeFullBlock(p_221270_, blockpos1)) {
+            for (int i = 0; i < attempt / 16; i++) {
+                testPos = testPos.offset(random.nextInt(3) - 1,
+                        (random.nextInt(3) - 1) * random.nextInt(3) / 2,
+                        random.nextInt(3) - 1);
+                if (!level.getBlockState(testPos.below()).is(this) || level.getBlockState(testPos).isCollisionShapeFullBlock(level, testPos)) {
                     continue label46;
                 }
             }
 
-            BlockState blockstate1 = p_221270_.getBlockState(blockpos1);
-            if (blockstate1.is(blockstate.getBlock()) && p_221271_.nextInt(10) == 0) {
-                ((BonemealableBlock)blockstate.getBlock()).performBonemeal(p_221270_, p_221271_, blockpos1, blockstate1);
+            BlockState testState = level.getBlockState(testPos);
+            if (testState.is(Blocks.SHORT_GRASS) && random.nextFloat() < 0.1F) {
+                BonemealableBlock grass = (BonemealableBlock) Blocks.SHORT_GRASS;
+                if (grass.isValidBonemealTarget(level, testPos, testState, source)) {
+                    grass.performBonemeal(level, random, testPos, testState, source);
+                }
             }
 
-            if (blockstate1.isAir()) {
-                Holder<PlacedFeature> holder;
-                if (p_221271_.nextInt(8) == 0) {
-                    List<ConfiguredFeature<?, ?>> list = p_221270_.getBiome(blockpos1).value().getGenerationSettings().getFlowerFeatures();
-                    if (list.isEmpty()) {
+            if (testState.isAir() && !level.isOutsideBuildHeight(testPos)) {
+                if (random.nextFloat() < 0.125F) {
+                    List<Feature> features = level.getBiome(testPos).value().getGenerationSettings().getBoneMealFeatures();
+                    if (features.isEmpty()) {
                         continue;
                     }
 
-                    holder = ((RandomPatchConfiguration)list.get(0).config()).feature();
+                    Util.getRandom(features, random).place(level, level.getChunkSource().getGenerator(), random, testPos);
                 } else {
-                    if (!optional.isPresent()) {
+                    if (grassFeature.isEmpty()) {
                         continue;
                     }
 
-                    holder = optional.get();
+                    grassFeature.get().value().place(level, level.getChunkSource().getGenerator(), random, testPos);
                 }
-
-                holder.value().place(p_221270_, p_221270_.getChunkSource().getGenerator(), p_221271_, blockpos1);
             }
         }
+    }
 
+    @Override
+    public BonemealableBlock.Type getType() {
+        return BonemealableBlock.Type.NEIGHBOR_SPREADER;
     }
 }

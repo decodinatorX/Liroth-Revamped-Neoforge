@@ -7,7 +7,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -21,7 +21,7 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation;
-import net.minecraft.world.entity.animal.AbstractFish;
+import net.minecraft.world.entity.animal.fish.AbstractFish;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -51,15 +51,10 @@ public class VileSharkEntity extends AbstractFish {
 
     @Nullable
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType spawnType,
-                                        @Nullable SpawnGroupData spawnGroupData) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnType, @Nullable SpawnGroupData spawnGroupData) {
         this.setAirSupply(this.getMaxAirSupply());
         this.setXRot(0.0F);
         return super.finalizeSpawn(level, difficulty, spawnType, spawnGroupData);
-    }
-
-    @Override
-    protected void handleAirSupply(int airSupply) {
     }
 
     @Override
@@ -69,8 +64,8 @@ public class VileSharkEntity extends AbstractFish {
 
     @Override
     public boolean isEyeInFluid(TagKey<Fluid> fluidTag) {
-        return super.isEyeInFluid(fluidTag)
-                || (fluidTag == FluidTags.WATER && this.getEyeInFluidType() == LirothFluids.LIROTH_FLUID_TYPE);
+        Vec3 eyePosition = this.getEyePosition();
+        return super.isEyeInFluid(fluidTag) || (fluidTag == FluidTags.WATER && this.level().getFluidState(BlockPos.containing(eyePosition.x, eyePosition.y, eyePosition.z)).getFluidType() == LirothFluids.LIROTH_FLUID_TYPE);
     }
 
     @Override
@@ -82,7 +77,7 @@ public class VileSharkEntity extends AbstractFish {
     @Override
     public void tick() {
         super.tick();
-        if (this.level().isClientSide || !this.isInWater()) {
+        if (this.level().isClientSide() || !this.isInWater()) {
             return;
         }
 
@@ -145,7 +140,7 @@ public class VileSharkEntity extends AbstractFish {
         double surfaceY = Double.NaN;
         boolean foundFluid = false;
 
-        for (int y = startY; y <= startY + 64 && y < this.level().getMaxBuildHeight(); y++) {
+        for (int y = startY; y <= startY + 64 && y <= this.level().getMaxY(); y++) {
             BlockPos pos = BlockPos.containing(this.getX(), y, this.getZ());
             FluidState fluidState = this.level().getFluidState(pos);
             boolean isSwimFluid = fluidState.is(FluidTags.WATER)
@@ -175,7 +170,7 @@ public class VileSharkEntity extends AbstractFish {
     }
 
     @Override
-    public boolean causeFallDamage(float fallDistance, float damageMultiplier, DamageSource damageSource) {
+    public boolean causeFallDamage(double fallDistance, float damageMultiplier, DamageSource damageSource) {
         return false;
     }
 

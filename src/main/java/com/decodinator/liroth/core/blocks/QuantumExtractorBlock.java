@@ -5,14 +5,13 @@ import javax.annotation.Nullable;
 import com.decodinator.liroth.core.blockentities.QuantumBlockEntity;
 import com.decodinator.liroth.core.blockentities.QuantumExtractorBlockEntity;
 import com.decodinator.liroth.core.registry.LirothBlockEntities;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
@@ -27,22 +26,16 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class QuantumExtractorBlock extends BaseEntityBlock {
-    public static final MapCodec<QuantumExtractorBlock> CODEC = simpleCodec(QuantumExtractorBlock::new);
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
     public QuantumExtractorBlock(Block.Properties settings) {
         super(settings);
-        registerDefaultState(this.stateDefinition.any().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH).setValue(LIT, false));
-    }
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
-        return CODEC;
+        registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(LIT, false));
     }
 
     @Override
@@ -62,7 +55,7 @@ public class QuantumExtractorBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         } else {
             this.openContainer(level, pos, player);
@@ -72,20 +65,9 @@ public class QuantumExtractorBlock extends BaseEntityBlock {
 
     protected void openContainer(Level level, BlockPos pos, Player player) {
         BlockEntity blockentity = level.getBlockEntity(pos);
-        if (blockentity instanceof QuantumExtractorBlockEntity) {
-            player.openMenu((MenuProvider)blockentity);
+        if (blockentity instanceof QuantumExtractorBlockEntity menuProvider) {
+            player.openMenu(menuProvider);
         }
-    }
-
-    @Override
-    public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean moved) {
-        if (state.getBlock() != newState.getBlock() && !world.isClientSide) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            if (blockEntity instanceof QuantumExtractorBlockEntity) {
-                ((QuantumExtractorBlockEntity) blockEntity).drops();
-            }
-        }
-        super.onRemove(state, world, pos, newState, moved);
     }
 
     @Nullable
@@ -96,13 +78,17 @@ public class QuantumExtractorBlock extends BaseEntityBlock {
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level world, BlockState state, BlockEntityType<T> type) {
-        return world.isClientSide ? null : createTickerHelper(type, LirothBlockEntities.QUANTUM_EXTRACTOR, QuantumExtractorBlockEntity::serverTick);
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return createTickerHelper(type, LirothBlockEntities.QUANTUM_EXTRACTOR, (world, pos, blockState, blockEntity) -> {
+            if (world instanceof ServerLevel serverLevel) {
+                QuantumExtractorBlockEntity.serverTick(serverLevel, pos, blockState, blockEntity);
+            }
+        });
     }
 
     @Override
     public void animateTick(BlockState state, Level world, BlockPos pos, RandomSource random) {
-        if (!state.getValue(LIT).booleanValue()) {
+        if (!state.getValue(LIT)) {
             return;
         }
         double d = (double)pos.getX() + 0.5;

@@ -2,32 +2,57 @@ package com.decodinator.liroth.core.features;
 
 import java.util.Optional;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.PointedDripstoneConfiguration;
 
-public class PointedPetrifiedCrystalFeature extends Feature<PointedDripstoneConfiguration> {
-    public PointedPetrifiedCrystalFeature(Codec<PointedDripstoneConfiguration> p_191067_) {
-        super(p_191067_);
+public final class PointedPetrifiedCrystalFeature implements Feature {
+    public static final MapCodec<PointedPetrifiedCrystalFeature> CODEC = RecordCodecBuilder.mapCodec(instance ->
+            instance.group(
+                    Codec.floatRange(0.0F, 1.0F).fieldOf("chance_of_taller_dripstone")
+                            .forGetter(feature -> feature.chanceOfTallerDripstone),
+                    Codec.floatRange(0.0F, 1.0F).fieldOf("chance_of_directional_spread")
+                            .forGetter(feature -> feature.chanceOfDirectionalSpread),
+                    Codec.floatRange(0.0F, 1.0F).fieldOf("chance_of_spread_radius2")
+                            .forGetter(feature -> feature.chanceOfSpreadRadius2),
+                    Codec.floatRange(0.0F, 1.0F).fieldOf("chance_of_spread_radius3")
+                            .forGetter(feature -> feature.chanceOfSpreadRadius3)
+            ).apply(instance, PointedPetrifiedCrystalFeature::new));
+
+    private final float chanceOfTallerDripstone;
+    private final float chanceOfDirectionalSpread;
+    private final float chanceOfSpreadRadius2;
+    private final float chanceOfSpreadRadius3;
+
+    public PointedPetrifiedCrystalFeature(float chanceOfTallerDripstone, float chanceOfDirectionalSpread,
+                                          float chanceOfSpreadRadius2, float chanceOfSpreadRadius3) {
+        this.chanceOfTallerDripstone = chanceOfTallerDripstone;
+        this.chanceOfDirectionalSpread = chanceOfDirectionalSpread;
+        this.chanceOfSpreadRadius2 = chanceOfSpreadRadius2;
+        this.chanceOfSpreadRadius3 = chanceOfSpreadRadius3;
     }
 
-    public boolean place(FeaturePlaceContext<PointedDripstoneConfiguration> p_191078_) {
-        LevelAccessor levelaccessor = p_191078_.level();
-        BlockPos blockpos = p_191078_.origin();
-        RandomSource randomsource = p_191078_.random();
-        PointedDripstoneConfiguration pointeddripstoneconfiguration = p_191078_.config();
+    @Override
+    public MapCodec<PointedPetrifiedCrystalFeature> codec() {
+        return CODEC;
+    }
+
+    @Override
+    public boolean place(WorldGenLevel levelaccessor, ChunkGenerator chunkGenerator, RandomSource randomsource, BlockPos blockpos) {
         Optional<Direction> optional = getTipDirection(levelaccessor, blockpos, randomsource);
         if (optional.isEmpty()) {
             return false;
         } else {
             BlockPos blockpos1 = blockpos.relative(optional.get().getOpposite());
-            createPatchOfDripstoneBlocks(levelaccessor, randomsource, blockpos1, pointeddripstoneconfiguration);
-            int i = randomsource.nextFloat() < pointeddripstoneconfiguration.chanceOfTallerDripstone && PetrifiedCrystalHelper.isEmptyOrWater(levelaccessor.getBlockState(blockpos.relative(optional.get()))) ? 2 : 1;
+            createPatchOfDripstoneBlocks(levelaccessor, randomsource, blockpos1);
+            int i = randomsource.nextFloat() < chanceOfTallerDripstone && PetrifiedCrystalHelper.isEmptyOrWater(levelaccessor.getBlockState(blockpos.relative(optional.get()))) ? 2 : 1;
             PetrifiedCrystalHelper.growPointedDripstone(levelaccessor, blockpos, optional.get(), i, false);
             return true;
         }
@@ -45,17 +70,17 @@ public class PointedPetrifiedCrystalFeature extends Feature<PointedDripstoneConf
         }
     }
 
-    private static void createPatchOfDripstoneBlocks(LevelAccessor p_225194_, RandomSource p_225195_, BlockPos p_225196_, PointedDripstoneConfiguration p_225197_) {
+    private void createPatchOfDripstoneBlocks(LevelAccessor p_225194_, RandomSource p_225195_, BlockPos p_225196_) {
         PetrifiedCrystalHelper.placeDripstoneBlockIfPossible(p_225194_, p_225196_);
 
         for(Direction direction : Direction.Plane.HORIZONTAL) {
-            if (!(p_225195_.nextFloat() > p_225197_.chanceOfDirectionalSpread)) {
+            if (!(p_225195_.nextFloat() > chanceOfDirectionalSpread)) {
                 BlockPos blockpos = p_225196_.relative(direction);
                 PetrifiedCrystalHelper.placeDripstoneBlockIfPossible(p_225194_, blockpos);
-                if (!(p_225195_.nextFloat() > p_225197_.chanceOfSpreadRadius2)) {
+                if (!(p_225195_.nextFloat() > chanceOfSpreadRadius2)) {
                     BlockPos blockpos1 = blockpos.relative(Direction.getRandom(p_225195_));
                     PetrifiedCrystalHelper.placeDripstoneBlockIfPossible(p_225194_, blockpos1);
-                    if (!(p_225195_.nextFloat() > p_225197_.chanceOfSpreadRadius3)) {
+                    if (!(p_225195_.nextFloat() > chanceOfSpreadRadius3)) {
                         BlockPos blockpos2 = blockpos1.relative(Direction.getRandom(p_225195_));
                         PetrifiedCrystalHelper.placeDripstoneBlockIfPossible(p_225194_, blockpos2);
                     }

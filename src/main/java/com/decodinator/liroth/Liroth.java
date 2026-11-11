@@ -7,11 +7,10 @@ import com.decodinator.liroth.core.registry.*;
 import com.decodinator.liroth.core.tab.CreativeTabs;
 import com.decodinator.liroth.core.worldgen.LirothSeededChunkGenerator;
 import de.ambertation.wunderlib.general.Logger;
-import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.item.ItemStack;
@@ -22,12 +21,14 @@ import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.level.BlockDropsEvent;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 import org.betterx.wover.core.api.ModCore;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(Liroth.MOD_ID)
@@ -38,45 +39,41 @@ public class Liroth {
     public static final ModCore C = ModCore.create(MOD_ID);
     public static final Logger LOGGER = C.LOG;
 
-    private static final RegistrySetBuilder BUILDER = (new RegistrySetBuilder()).add(Registries.CONFIGURED_FEATURE, (RegistrySetBuilder.RegistryBootstrap) LirothConfiguredFeatures::bootstrap).add(Registries.PLACED_FEATURE, (RegistrySetBuilder.RegistryBootstrap) LirothPlacedFeatures::bootstrap);
-
     public Liroth(IEventBus modEventBus, ModContainer modContainer) {
         C.registerDatapackListener(modEventBus);
         modEventBus.addListener(RegisterEvent.class, LirothParticles::onRegister);
         modEventBus.addListener(RegisterEvent.class, LirothMenuTypes::register);
         modEventBus.addListener(RegisterEvent.class, this::ensureBlocksLoaded);
         modEventBus.addListener(RegisterEvent.class, this::ensureItemsLoaded);
+        modEventBus.addListener(this::registerCompostableFoods);
         modEventBus.addListener(RegisterEvent.class, LirothBlockEntities::register);
         modEventBus.addListener(RegisterEvent.class, CreativeTabs::onRegister);
         modEventBus.addListener(RegisterEvent.class, LirothFluids::register);
         modEventBus.addListener(RegisterEvent.class, LirothRecipeTypes::register);
         modEventBus.addListener(RegisterEvent.class, LirothEntities::register);
+        modEventBus.addListener(RegisterEvent.class, LirothFeatures::register);
         modEventBus.addListener(RegisterEvent.class, LirothSounds::register);
         modEventBus.addListener(RegisterEvent.class, LirothStructures::register);
         modEventBus.addListener(RegisterEvent.class, this::registerChunkGenerator);
         modEventBus.addListener(RegisterEvent.class, LirothPotions::register);
-        NeoForge.EVENT_BUS.addListener(LirothPotions::registerBrewingRecipes);
         modEventBus.addListener(Liroth::registerAttributes);
         modEventBus.addListener(Liroth::registerSpawnPlacements);
         NeoForge.EVENT_BUS.addListener(this::onEntityAttack);
         NeoForge.EVENT_BUS.addListener(this::onPortalFrameDrops);
         NeoForge.EVENT_BUS.addListener(this::limitNaturalLirothMobSpawns);
-        modEventBus.addListener(RegisterEvent.class, LirothFeatures::register);
-        LirothConfiguredFeatures.CONFIGURED_FEATURES.register(modEventBus);
-        LirothPlacedFeatures.PLACED_FEATURES.register(modEventBus);
-        Liroth.BUILDER.getEntryKeys();
+        NeoForge.EVENT_BUS.addListener(this::sendJeiRecipes);
         if (ModCore.isDatagen()) {
             LirothDatagen datagen = new LirothDatagen();
-            modEventBus.addListener(datagen::onGatherData);
+            modEventBus.addListener(net.neoforged.neoforge.data.event.GatherDataEvent.Client.class, datagen::onGatherData);
+            modEventBus.addListener(net.neoforged.neoforge.data.event.GatherDataEvent.Server.class, datagen::onGatherData);
         }
         LirothTags.register();
-        LirothPortalBuilders.init();
     }
 
     private void registerChunkGenerator(RegisterEvent event) {
         if (event.getRegistryKey().equals(Registries.CHUNK_GENERATOR)) {
             event.register(Registries.CHUNK_GENERATOR,
-                    ResourceLocation.fromNamespaceAndPath(MOD_ID, "dimension_seeded"),
+                    Identifier.fromNamespaceAndPath(MOD_ID, "dimension_seeded"),
                     () -> LirothSeededChunkGenerator.CODEC);
         }
     }
@@ -90,7 +87,6 @@ public class Liroth {
             } catch (ClassNotFoundException ignored) {
             }
             if (!bonemealInitialized) {
-                //    BonemealPlants.init();
                 bonemealInitialized = true;
             }
         }
@@ -102,25 +98,31 @@ public class Liroth {
                 Class.forName("com.decodinator.liroth.core.registry.LirothItems");
             } catch (ClassNotFoundException ignored) {
             }
-            LirothItems.ensureStaticallyLoaded();
-            LirothItems.registerCompostableFoods();
+            LirothItems.registerDeferredItems(event);
         }
     }
 
+    private void registerCompostableFoods(FMLCommonSetupEvent event) {
+        event.enqueueWork(LirothItems::registerCompostableFoods);
+    }
+
     private void onEntityAttack(AttackEntityEvent event) {
-        if (event.getEntity().level().isClientSide
+        if (event.getEntity().level().isClientSide()
                 || !(event.getTarget() instanceof ShadeEntity shade)
                 || !event.getEntity().getMainHandItem().is(LirothTags.TORCHES)) {
             return;
         }
 
-        shade.kill();
+        shade.kill(event.getEntity().level().getServer().getLevel(event.getEntity().level().dimension()));
         event.setCanceled(true);
     }
 
+    private void sendJeiRecipes(OnDatapackSyncEvent event) {
+        event.sendRecipes(LirothRecipeTypes.LIROTH_SPLITTING, LirothRecipeTypes.QUANTUM_EXTRACTING);
+    }
+
     private void onPortalFrameDrops(BlockDropsEvent event) {
-        if (event.getState().getBlock() instanceof PortalChargeFrameBlock frame
-                && event.getState().getValue(PortalChargeFrameBlock.CHARGED)) {
+        if (event.getState().getBlock() instanceof PortalChargeFrameBlock frame && event.getState().getValue(PortalChargeFrameBlock.CHARGED)) {
             event.getDrops().add(new ItemEntity(
                     event.getLevel(),
                     event.getPos().getX() + 0.5,
@@ -133,21 +135,15 @@ public class Liroth {
 
     private void limitNaturalLirothMobSpawns(FinalizeSpawnEvent event) {
         Mob mob = event.getEntity();
-        if (event.getSpawnType() != MobSpawnType.NATURAL
-                || !mob.getType().builtInRegistryHolder().key().location().getNamespace().equals(MOD_ID)) {
+        if (event.getSpawnType() != EntitySpawnReason.NATURAL || !MOD_ID.equals(mob.getType().builtInRegistryHolder().key().identifier().getNamespace())) {
             return;
         }
 
         double x = event.getX();
         double y = event.getY();
         double z = event.getZ();
-        AABB capArea = new AABB(
-                x - NATURAL_LIROTH_MOB_CAP_RADIUS, y - NATURAL_LIROTH_MOB_CAP_RADIUS, z - NATURAL_LIROTH_MOB_CAP_RADIUS,
-                x + NATURAL_LIROTH_MOB_CAP_RADIUS, y + NATURAL_LIROTH_MOB_CAP_RADIUS, z + NATURAL_LIROTH_MOB_CAP_RADIUS);
-        long nearbyLirothMobs = event.getLevel().getEntitiesOfClass(Mob.class, capArea,
-                nearby -> nearby.isAlive()
-                        && nearby.getType().builtInRegistryHolder().key().location().getNamespace().equals(MOD_ID))
-                .size();
+        AABB capArea = new AABB(x - NATURAL_LIROTH_MOB_CAP_RADIUS, y - NATURAL_LIROTH_MOB_CAP_RADIUS, z - NATURAL_LIROTH_MOB_CAP_RADIUS, x + NATURAL_LIROTH_MOB_CAP_RADIUS, y + NATURAL_LIROTH_MOB_CAP_RADIUS, z + NATURAL_LIROTH_MOB_CAP_RADIUS);
+        long nearbyLirothMobs = event.getLevel().getEntitiesOfClass(Mob.class, capArea, nearby -> nearby.isAlive() && MOD_ID.equals(nearby.getType().builtInRegistryHolder().key().identifier().getNamespace())).size();
 
         if (nearbyLirothMobs >= MAX_NATURAL_LIROTH_MOBS_NEAR_SPAWN) {
             event.setSpawnCancelled(true);

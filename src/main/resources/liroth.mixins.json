@@ -6,9 +6,7 @@
     "RandomStateAccessor",
     "ChunkGeneratorMixin"
   ],
-  "client": [
-    "client.CustomPortalOverlayMixin"
-  ],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   },

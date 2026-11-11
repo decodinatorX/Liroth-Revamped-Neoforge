@@ -2,51 +2,43 @@ package com.decodinator.liroth.core.blocks;
 
 import javax.annotation.Nullable;
 
-import com.decodinator.liroth.client.screens.LirothSplitterScreenHandler;
 import com.decodinator.liroth.core.blockentities.LirothSplitterBlockEntity;
 import com.decodinator.liroth.core.blockentities.SplitterBlockEntity;
 import com.decodinator.liroth.core.registry.LirothBlockEntities;
 import com.decodinator.liroth.core.registry.LirothParticles;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.stats.Stats;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class LirothSplitterBlock extends BaseEntityBlock {
-    public static final MapCodec<LirothSplitterBlock> CODEC = simpleCodec(LirothSplitterBlock::new);
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
     public LirothSplitterBlock(Block.Properties settings) {
         super(settings);
-        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(LIT, Boolean.valueOf(false)));
-    }
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
-        return CODEC;
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(LIT, false));
     }
 
     @Override
@@ -66,7 +58,7 @@ public class LirothSplitterBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         } else {
             this.openContainer(level, pos, player);
@@ -76,20 +68,9 @@ public class LirothSplitterBlock extends BaseEntityBlock {
 
     protected void openContainer(Level level, BlockPos pos, Player player) {
         BlockEntity blockentity = level.getBlockEntity(pos);
-        if (blockentity instanceof LirothSplitterBlockEntity) {
-            player.openMenu((MenuProvider)blockentity);
+        if (blockentity instanceof LirothSplitterBlockEntity menuProvider) {
+            player.openMenu(menuProvider);
         }
-    }
-
-    @Override
-    public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean moved) {
-        if (state.getBlock() != newState.getBlock()) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            if (blockEntity instanceof LirothSplitterBlockEntity) {
-                ((LirothSplitterBlockEntity) blockEntity).drops();
-            }
-        }
-        super.onRemove(state, world, pos, newState, moved);
     }
 
     @Nullable
@@ -100,13 +81,17 @@ public class LirothSplitterBlock extends BaseEntityBlock {
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level world, BlockState state, BlockEntityType<T> type) {
-        return createTickerHelper(type, LirothBlockEntities.LIROTH_SPLITTER, LirothSplitterBlockEntity::serverTick);
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return createTickerHelper(type, LirothBlockEntities.LIROTH_SPLITTER, (world, pos, blockState, blockEntity) -> {
+            if (world instanceof ServerLevel serverLevel) {
+                LirothSplitterBlockEntity.serverTick(serverLevel, pos, blockState, blockEntity);
+            }
+        });
     }
 
     @Override
     public void animateTick(BlockState state, Level world, BlockPos pos, RandomSource random) {
-        if (!state.getValue(LIT).booleanValue()) {
+        if (!state.getValue(LIT)) {
             return;
         }
         double d = (double)pos.getX() + 0.5;
@@ -117,7 +102,6 @@ public class LirothSplitterBlock extends BaseEntityBlock {
         }
         Direction direction = state.getValue(FACING);
         Direction.Axis axis = direction.getAxis();
-        double g = 0.52;
         double h = random.nextDouble() * 0.6 - 0.3;
         double i = axis == Direction.Axis.X ? (double)direction.getStepX() * 0.52 : h;
         double j = random.nextDouble() * 6.0 / 16.0;

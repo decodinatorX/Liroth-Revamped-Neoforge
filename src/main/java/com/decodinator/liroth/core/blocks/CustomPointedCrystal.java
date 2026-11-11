@@ -13,19 +13,20 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.ThrownTrident;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Fallable;
@@ -35,26 +36,25 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.block.state.properties.DripstoneThickness;
+import net.minecraft.world.level.block.state.properties.SpeleothemThickness;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.material.PushReaction;
-import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.fluids.FluidType;
 
 public class CustomPointedCrystal extends Block implements Fallable, SimpleWaterloggedBlock {
     public Block growHere;
-    public static final DirectionProperty TIP_DIRECTION = BlockStateProperties.VERTICAL_DIRECTION;
-    public static final EnumProperty<DripstoneThickness> THICKNESS = BlockStateProperties.DRIPSTONE_THICKNESS;
+    public static final EnumProperty<Direction> TIP_DIRECTION = BlockStateProperties.VERTICAL_DIRECTION;
+    public static final EnumProperty<SpeleothemThickness> THICKNESS = BlockStateProperties.SPELEOTHEM_THICKNESS;
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
     private static final VoxelShape TIP_MERGE_SHAPE = Block.box(5.0D, 0.0D, 5.0D, 11.0D, 16.0D, 11.0D);
     private static final VoxelShape TIP_SHAPE_UP = Block.box(5.0D, 0.0D, 5.0D, 11.0D, 11.0D, 11.0D);
@@ -64,15 +64,9 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
     private static final VoxelShape BASE_SHAPE = Block.box(2.0D, 0.0D, 2.0D, 14.0D, 16.0D, 14.0D);
     private static final VoxelShape REQUIRED_SPACE_TO_DRIP_THROUGH_NON_SOLID_BLOCK = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
 
-    public CustomPointedCrystal(Block source) {
-        super(Properties.ofFullCopy(source).noOcclusion());
-        this.registerDefaultState(this.stateDefinition.any().setValue(TIP_DIRECTION, Direction.UP).setValue(THICKNESS, DripstoneThickness.TIP).setValue(WATERLOGGED, Boolean.valueOf(false)));
-
-    }
-
     public CustomPointedCrystal(BlockBehaviour.Properties p_154025_, Block growBlock) {
         super(p_154025_);
-        this.registerDefaultState(this.stateDefinition.any().setValue(TIP_DIRECTION, Direction.UP).setValue(THICKNESS, DripstoneThickness.TIP).setValue(WATERLOGGED, Boolean.valueOf(false)));
+        this.registerDefaultState(this.stateDefinition.any().setValue(TIP_DIRECTION, Direction.UP).setValue(THICKNESS, SpeleothemThickness.TIP).setValue(WATERLOGGED, Boolean.valueOf(false)));
         this.growHere = growBlock;
     }
 
@@ -80,48 +74,53 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         p_154157_.add(TIP_DIRECTION, THICKNESS, WATERLOGGED);
     }
 
-    public boolean canSurvive(BlockState p_154137_, LevelReader p_154138_, BlockPos p_154139_) {
+    @Override
+    protected boolean canSurvive(BlockState p_154137_, LevelReader p_154138_, BlockPos p_154139_) {
         return isValidPointedDripstonePlacement(p_154138_, p_154139_, p_154137_.getValue(TIP_DIRECTION));
     }
 
-    public BlockState updateShape(BlockState p_154147_, Direction p_154148_, BlockState p_154149_, LevelAccessor p_154150_, BlockPos p_154151_, BlockPos p_154152_) {
+    @Override
+    protected BlockState updateShape(BlockState p_154147_, LevelReader level, ScheduledTickAccess ticks, BlockPos p_154151_, Direction p_154148_, BlockPos p_154152_, BlockState p_154149_, RandomSource random
+    ) {
         if (p_154147_.getValue(WATERLOGGED)) {
-            p_154150_.scheduleTick(p_154151_, Fluids.WATER, Fluids.WATER.getTickDelay(p_154150_));
+            ticks.scheduleTick(p_154151_, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
         if (p_154148_ != Direction.UP && p_154148_ != Direction.DOWN) {
             return p_154147_;
         } else {
             Direction direction = p_154147_.getValue(TIP_DIRECTION);
-            if (direction == Direction.DOWN && p_154150_.getBlockTicks().hasScheduledTick(p_154151_, this)) {
+            if (direction == Direction.DOWN && ticks.getBlockTicks().hasScheduledTick(p_154151_, this)) {
                 return p_154147_;
-            } else if (p_154148_ == direction.getOpposite() && !this.canSurvive(p_154147_, p_154150_, p_154151_)) {
+            } else if (p_154148_ == direction.getOpposite() && !this.canSurvive(p_154147_, level, p_154151_)) {
                 if (direction == Direction.DOWN) {
-                    p_154150_.scheduleTick(p_154151_, this, 2);
+                    ticks.scheduleTick(p_154151_, this, 2);
                 } else {
-                    p_154150_.scheduleTick(p_154151_, this, 1);
+                    ticks.scheduleTick(p_154151_, this, 1);
                 }
 
                 return p_154147_;
             } else {
-                boolean flag = p_154147_.getValue(THICKNESS) == DripstoneThickness.TIP_MERGE;
-                DripstoneThickness dripstonethickness = calculateDripstoneThickness(p_154150_, p_154151_, direction, flag);
+                boolean flag = p_154147_.getValue(THICKNESS) == SpeleothemThickness.TIP_MERGE;
+                SpeleothemThickness dripstonethickness = calculateDripstoneThickness(level, p_154151_, direction, flag);
                 return p_154147_.setValue(THICKNESS, dripstonethickness);
             }
         }
     }
 
+    @Override
     public void onProjectileHit(Level p_154042_, BlockState p_154043_, BlockHitResult p_154044_, Projectile p_154045_) {
         BlockPos blockpos = p_154044_.getBlockPos();
-        if (!p_154042_.isClientSide && p_154045_.mayInteract(p_154042_, blockpos) && p_154045_ instanceof ThrownTrident && p_154045_.getDeltaMovement().length() > 0.6D) {
+        if (p_154042_ instanceof ServerLevel serverLevel && p_154045_ instanceof ThrownTrident && p_154045_.mayInteract(serverLevel, blockpos) && p_154045_.getDeltaMovement().length() > 0.6D) {
             p_154042_.destroyBlock(blockpos, true);
         }
 
     }
 
-    public void fallOn(Level p_154047_, BlockState p_154048_, BlockPos p_154049_, Entity p_154050_, float p_154051_) {
-        if (p_154048_.getValue(TIP_DIRECTION) == Direction.UP && p_154048_.getValue(THICKNESS) == DripstoneThickness.TIP) {
-            p_154050_.causeFallDamage(p_154051_ + 2.0F, 2.0F, p_154047_.damageSources().stalagmite());
+    @Override
+    public void fallOn(Level p_154047_, BlockState p_154048_, BlockPos p_154049_, Entity p_154050_, double p_154051_) {
+        if (p_154048_.getValue(TIP_DIRECTION) == Direction.UP && p_154048_.getValue(THICKNESS) == SpeleothemThickness.TIP) {
+            p_154050_.causeFallDamage(p_154051_ + 2.0, 2.0F, p_154047_.damageSources().stalagmite());
         } else {
             super.fallOn(p_154047_, p_154048_, p_154049_, p_154050_, p_154051_);
         }
@@ -132,10 +131,8 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         if (canDrip(p_221870_)) {
             float f = p_221873_.nextFloat();
             if (!(f > 0.12F)) {
-                getFluidAboveStalactite(p_221871_, p_221872_, p_221870_).filter((p_221848_) -> {
-                    return f < 0.02F || canFillCauldron(p_221848_.fluid);
-                }).ifPresent((p_221881_) -> {
-                    spawnDripParticle(p_221871_, p_221872_, p_221870_, p_221881_.fluid);
+                getFluidAboveStalactite(p_221871_, p_221872_, p_221870_).filter((p_221848_) -> f < 0.02F || canFillCauldron(p_221848_.fluid)).ifPresent((p_221881_) -> {
+                    spawnDripParticle(p_221871_, p_221872_, p_221870_, p_221881_.fluid, p_221881_.pos);
                 });
             }
         }
@@ -194,7 +191,7 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
     }
 
     public PushReaction getPistonPushReaction(BlockState p_154237_) {
-        return PushReaction.DESTROY;
+        return PushReaction.POPPED;
     }
 
     @Nullable
@@ -207,7 +204,7 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
             return null;
         } else {
             boolean flag = !p_154040_.isSecondaryUseActive();
-            DripstoneThickness dripstonethickness = calculateDripstoneThickness(levelaccessor, blockpos, direction1, flag);
+            SpeleothemThickness dripstonethickness = calculateDripstoneThickness(levelaccessor, blockpos, direction1, flag);
             return dripstonethickness == null ? null : this.defaultBlockState().setValue(TIP_DIRECTION, direction1).setValue(THICKNESS, dripstonethickness).setValue(WATERLOGGED, Boolean.valueOf(levelaccessor.getFluidState(blockpos).getType() == Fluids.WATER));
         }
     }
@@ -217,30 +214,26 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         return p_154235_.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(p_154235_);
     }
 
-    public VoxelShape getOcclusionShape(BlockState p_154170_, BlockGetter p_154171_, BlockPos p_154172_) {
-        return Shapes.empty();
-    }
-
     public VoxelShape getShape(BlockState p_154117_, BlockGetter p_154118_, BlockPos p_154119_, CollisionContext p_154120_) {
-        DripstoneThickness dripstonethickness = p_154117_.getValue(THICKNESS);
+        SpeleothemThickness dripstonethickness = p_154117_.getValue(THICKNESS);
         VoxelShape voxelshape;
-        if (dripstonethickness == DripstoneThickness.TIP_MERGE) {
+        if (dripstonethickness == SpeleothemThickness.TIP_MERGE) {
             voxelshape = TIP_MERGE_SHAPE;
-        } else if (dripstonethickness == DripstoneThickness.TIP) {
+        } else if (dripstonethickness == SpeleothemThickness.TIP) {
             if (p_154117_.getValue(TIP_DIRECTION) == Direction.DOWN) {
                 voxelshape = TIP_SHAPE_DOWN;
             } else {
                 voxelshape = TIP_SHAPE_UP;
             }
-        } else if (dripstonethickness == DripstoneThickness.FRUSTUM) {
+        } else if (dripstonethickness == SpeleothemThickness.FRUSTUM) {
             voxelshape = FRUSTUM_SHAPE;
-        } else if (dripstonethickness == DripstoneThickness.MIDDLE) {
+        } else if (dripstonethickness == SpeleothemThickness.MIDDLE) {
             voxelshape = MIDDLE_SHAPE;
         } else {
             voxelshape = BASE_SHAPE;
         }
 
-        Vec3 vec3 = p_154117_.getOffset(p_154118_, p_154119_);
+        Vec3 vec3 = p_154117_.getOffset(p_154119_);
         return voxelshape.move(vec3.x, 0.0D, vec3.z);
     }
 
@@ -337,12 +330,12 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         if (isUnmergedTipWithDirection(blockstate, p_154038_.getOpposite())) {
             createMergedTips(blockstate, p_154036_, blockpos);
         } else if (blockstate.isAir() || blockstate.is(Blocks.WATER)) {
-            createDripstone(p_154036_, blockpos, p_154038_, DripstoneThickness.TIP);
+            createDripstone(p_154036_, blockpos, p_154038_, SpeleothemThickness.TIP);
         }
 
     }
 
-    private void createDripstone(LevelAccessor p_154088_, BlockPos p_154089_, Direction p_154090_, DripstoneThickness p_154091_) {
+    private void createDripstone(LevelAccessor p_154088_, BlockPos p_154089_, Direction p_154090_, SpeleothemThickness p_154091_) {
         BlockState blockstate = this.defaultBlockState().setValue(TIP_DIRECTION, p_154090_).setValue(THICKNESS, p_154091_).setValue(WATERLOGGED, Boolean.valueOf(p_154088_.getFluidState(p_154089_).getType() == Fluids.WATER));
         p_154088_.setBlock(p_154089_, blockstate, 3);
     }
@@ -358,24 +351,25 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
             blockpos1 = p_154233_.below();
         }
 
-        createDripstone(p_154232_, blockpos, Direction.DOWN, DripstoneThickness.TIP_MERGE);
-        createDripstone(p_154232_, blockpos1, Direction.UP, DripstoneThickness.TIP_MERGE);
+        createDripstone(p_154232_, blockpos, Direction.DOWN, SpeleothemThickness.TIP_MERGE);
+        createDripstone(p_154232_, blockpos1, Direction.UP, SpeleothemThickness.TIP_MERGE);
     }
 
-    public void spawnDripParticle(Level p_154063_, BlockPos p_154064_, BlockState p_154065_) {
-        getFluidAboveStalactite(p_154063_, p_154064_, p_154065_).ifPresent((p_221856_) -> {
-            spawnDripParticle(p_154063_, p_154064_, p_154065_, p_221856_.fluid);
-        });
-    }
-
-    private static void spawnDripParticle(Level p_154072_, BlockPos p_154073_, BlockState p_154074_, Fluid p_154075_) {
-        Vec3 vec3 = p_154074_.getOffset(p_154072_, p_154073_);
+    private static void spawnDripParticle(Level p_154072_, BlockPos p_154073_, BlockState p_154074_, Fluid p_154075_, BlockPos sourcePos) {
+        Vec3 vec3 = p_154074_.getOffset(p_154073_);
         double d1 = (double)p_154073_.getX() + 0.5D + vec3.x;
         double d2 = (double)((float)(p_154073_.getY() + 1) - 0.6875F) - 0.0625D;
         double d3 = (double)p_154073_.getZ() + 0.5D + vec3.z;
-        Fluid fluid = getDripFluid(p_154072_, p_154075_);
-        @SuppressWarnings("deprecation")
-        ParticleOptions particleoptions = fluid.is(FluidTags.LAVA) ? ParticleTypes.DRIPPING_DRIPSTONE_LAVA : ParticleTypes.DRIPPING_DRIPSTONE_WATER;
+        ParticleOptions particleoptions;
+        if (p_154075_.isSame(Fluids.EMPTY)) {
+            particleoptions = p_154072_.environmentAttributes().getValue(EnvironmentAttributes.DEFAULT_DRIPSTONE_PARTICLE, sourcePos);
+        } else {
+            FluidType.DripstoneDripInfo dripInfo = p_154075_.getFluidType().getDripInfo();
+            particleoptions = dripInfo != null && dripInfo.dripParticle() != null ? dripInfo.dripParticle() : p_154072_.environmentAttributes().getValue(EnvironmentAttributes.DEFAULT_DRIPSTONE_PARTICLE, sourcePos);
+        }
+        if (particleoptions == null) {
+            particleoptions = ParticleTypes.DRIPPING_DRIPSTONE_WATER;
+        }
         p_154072_.addParticle(particleoptions, d1, d2, d3, 0.0D, 0.0D, 0.0D);
     }
 
@@ -385,12 +379,8 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
             return p_154133_;
         } else {
             Direction direction = p_154131_.getValue(TIP_DIRECTION);
-            BiPredicate<BlockPos, BlockState> bipredicate = (p_202023_, p_202024_) -> {
-                return p_202024_.is(this) && p_202024_.getValue(TIP_DIRECTION) == direction;
-            };
-            return findBlockVertical(p_154132_, p_154133_, direction.getAxisDirection(), bipredicate, (p_154168_) -> {
-                return isTip(p_154168_, p_154135_);
-            }, p_154134_).orElse((BlockPos)null);
+            BiPredicate<BlockPos, BlockState> bipredicate = (p_202023_, p_202024_) -> p_202024_.is(this) && p_202024_.getValue(TIP_DIRECTION) == direction;
+            return findBlockVertical(p_154132_, p_154133_, direction.getAxisDirection(), bipredicate, (p_154168_) -> isTip(p_154168_, p_154135_), p_154134_).orElse((BlockPos)null);
         }
     }
 
@@ -410,26 +400,26 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         return direction;
     }
 
-    private DripstoneThickness calculateDripstoneThickness(LevelReader p_154093_, BlockPos p_154094_, Direction p_154095_, boolean p_154096_) {
+    private SpeleothemThickness calculateDripstoneThickness(LevelReader p_154093_, BlockPos p_154094_, Direction p_154095_, boolean p_154096_) {
         Direction direction = p_154095_.getOpposite();
         BlockState blockstate = p_154093_.getBlockState(p_154094_.relative(p_154095_));
         if (isPointedDripstoneWithDirection(blockstate, direction)) {
-            return !p_154096_ && blockstate.getValue(THICKNESS) != DripstoneThickness.TIP_MERGE ? DripstoneThickness.TIP : DripstoneThickness.TIP_MERGE;
+            return !p_154096_ && blockstate.getValue(THICKNESS) != SpeleothemThickness.TIP_MERGE ? SpeleothemThickness.TIP : SpeleothemThickness.TIP_MERGE;
         } else if (!isPointedDripstoneWithDirection(blockstate, p_154095_)) {
-            return DripstoneThickness.TIP;
+            return SpeleothemThickness.TIP;
         } else {
-            DripstoneThickness dripstonethickness = blockstate.getValue(THICKNESS);
-            if (dripstonethickness != DripstoneThickness.TIP && dripstonethickness != DripstoneThickness.TIP_MERGE) {
+            SpeleothemThickness dripstonethickness = blockstate.getValue(THICKNESS);
+            if (dripstonethickness != SpeleothemThickness.TIP && dripstonethickness != SpeleothemThickness.TIP_MERGE) {
                 BlockState blockstate1 = p_154093_.getBlockState(p_154094_.relative(direction));
-                return !isPointedDripstoneWithDirection(blockstate1, p_154095_) ? DripstoneThickness.BASE : DripstoneThickness.MIDDLE;
+                return !isPointedDripstoneWithDirection(blockstate1, p_154095_) ? SpeleothemThickness.BASE : SpeleothemThickness.MIDDLE;
             } else {
-                return DripstoneThickness.FRUSTUM;
+                return SpeleothemThickness.FRUSTUM;
             }
         }
     }
 
     public boolean canDrip(BlockState p_154239_) {
-        return isStalactite(p_154239_) && p_154239_.getValue(THICKNESS) == DripstoneThickness.TIP && !p_154239_.getValue(WATERLOGGED);
+        return isStalactite(p_154239_) && p_154239_.getValue(THICKNESS) == SpeleothemThickness.TIP && !p_154239_.getValue(WATERLOGGED);
     }
 
     private boolean canTipGrow(BlockState p_154195_, ServerLevel p_154196_, BlockPos p_154197_) {
@@ -445,12 +435,8 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
 
     private Optional<BlockPos> findRootBlock(Level p_154067_, BlockPos p_154068_, BlockState p_154069_, int p_154070_) {
         Direction direction = p_154069_.getValue(TIP_DIRECTION);
-        BiPredicate<BlockPos, BlockState> bipredicate = (p_202015_, p_202016_) -> {
-            return p_202016_.is(this) && p_202016_.getValue(TIP_DIRECTION) == direction;
-        };
-        return findBlockVertical(p_154067_, p_154068_, direction.getOpposite().getAxisDirection(), bipredicate, (p_154245_) -> {
-            return !p_154245_.is(this);
-        }, p_154070_);
+        BiPredicate<BlockPos, BlockState> bipredicate = (p_202015_, p_202016_) -> p_202016_.is(this) && p_202016_.getValue(TIP_DIRECTION) == direction;
+        return findBlockVertical(p_154067_, p_154068_, direction.getOpposite().getAxisDirection(), bipredicate, (p_154245_) -> !p_154245_.is(this), p_154070_);
     }
 
     private boolean isValidPointedDripstonePlacement(LevelReader p_154222_, BlockPos p_154223_, Direction p_154224_) {
@@ -463,8 +449,8 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         if (!p_154154_.is(this)) {
             return false;
         } else {
-            DripstoneThickness dripstonethickness = p_154154_.getValue(THICKNESS);
-            return dripstonethickness == DripstoneThickness.TIP || p_154155_ && dripstonethickness == DripstoneThickness.TIP_MERGE;
+            SpeleothemThickness dripstonethickness = p_154154_.getValue(THICKNESS);
+            return dripstonethickness == SpeleothemThickness.TIP || p_154155_ && dripstonethickness == SpeleothemThickness.TIP_MERGE;
         }
     }
 
@@ -484,26 +470,8 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
         return isStalactite(p_154204_) && !p_154205_.getBlockState(p_154206_.above()).is(this);
     }
 
-    public boolean isPathfindable(BlockState p_154112_, BlockGetter p_154113_, BlockPos p_154114_, PathComputationType p_154115_) {
-        return false;
-    }
-
     private boolean isPointedDripstoneWithDirection(BlockState p_154208_, Direction p_154209_) {
         return p_154208_.is(this) && p_154208_.getValue(TIP_DIRECTION) == p_154209_;
-    }
-
-    @Nullable
-    public BlockPos findStalactiteTipAboveCauldron(Level p_154056_, BlockPos p_154057_) {
-        BiPredicate<BlockPos, BlockState> bipredicate = (p_202030_, p_202031_) -> {
-            return canDripThrough(p_154056_, p_202030_, p_202031_);
-        };
-        return findBlockVertical(p_154056_, p_154057_, Direction.UP.getAxisDirection(), bipredicate, this::canDrip, 11).orElse((BlockPos)null);
-    }
-
-    public Fluid getCauldronFillFluidType(ServerLevel p_221850_, BlockPos p_221851_) {
-        return getFluidAboveStalactite(p_221850_, p_221851_, p_221850_.getBlockState(p_221851_)).map((p_221858_) -> {
-            return p_221858_.fluid;
-        }).filter(CustomPointedCrystal::canFillCauldron).orElse(Fluids.EMPTY);
     }
 
     private Optional<CustomPointedCrystal.FluidInfo> getFluidAboveStalactite(Level p_154182_, BlockPos p_154183_, BlockState p_154184_) {
@@ -511,7 +479,7 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
             BlockPos blockpos = p_221876_.above();
             BlockState blockstate = p_154182_.getBlockState(blockpos);
             Fluid fluid;
-            if (blockstate.is(Blocks.MUD) && !p_154182_.dimensionType().ultraWarm()) {
+            if (blockstate.is(Blocks.MUD) && !p_154182_.environmentAttributes().getValue(EnvironmentAttributes.WATER_EVAPORATES, blockpos)) {
                 fluid = Fluids.WATER;
             } else {
                 fluid = p_154182_.getFluidState(blockpos).getType();
@@ -527,14 +495,6 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
 
     private boolean canGrow(BlockState p_154141_, BlockState p_154142_) {
         return p_154141_.is(growHere) && p_154142_.is(Blocks.WATER) && p_154142_.getFluidState().isSource();
-    }
-
-    private static Fluid getDripFluid(Level p_154053_, Fluid p_154054_) {
-        if (p_154054_.isSame(Fluids.EMPTY)) {
-            return p_154053_.dimensionType().ultraWarm() ? Fluids.LAVA : Fluids.WATER;
-        } else {
-            return p_154054_;
-        }
     }
 
     private static Optional<BlockPos> findBlockVertical(LevelAccessor p_202007_, BlockPos p_202008_, Direction.AxisDirection p_202009_, BiPredicate<BlockPos, BlockState> p_202010_, Predicate<BlockState> p_202011_, int p_202012_) {
@@ -559,7 +519,7 @@ public class CustomPointedCrystal extends Block implements Fallable, SimpleWater
     private static boolean canDripThrough(BlockGetter p_202018_, BlockPos p_202019_, BlockState p_202020_) {
         if (p_202020_.isAir()) {
             return true;
-        } else if (p_202020_.isSolidRender(p_202018_, p_202019_)) {
+        } else if (p_202020_.isSolidRender()) {
             return false;
         } else if (!p_202020_.getFluidState().isEmpty()) {
             return false;

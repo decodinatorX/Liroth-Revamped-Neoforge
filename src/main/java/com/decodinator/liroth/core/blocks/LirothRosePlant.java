@@ -4,6 +4,7 @@ import com.decodinator.liroth.core.registry.LirothTags;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.TriState;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,7 +21,7 @@ public class LirothRosePlant extends BlockCommonPlant implements BehaviourPlant 
     public boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
         BlockPos blockpos = pos.below();
         BlockState belowBlockState = world.getBlockState(blockpos);
-        net.neoforged.neoforge.common.util.TriState soilDecision = belowBlockState.canSustainPlant(world, blockpos, Direction.UP, state);
+        TriState soilDecision = belowBlockState.canSustainPlant(world, blockpos, Direction.UP, state);
         if (!soilDecision.isDefault()) return soilDecision.isTrue();
         return this.mayPlaceOn(belowBlockState, world, blockpos);
     }

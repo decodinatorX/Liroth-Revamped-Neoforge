@@ -3,55 +3,19 @@ package com.decodinator.liroth.core.blocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.gameevent.GameEvent;
 
-import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
-public class CustomFarmBlock extends FarmBlock {
-    private final Supplier<Block> dirtBlock;
-
+public class CustomFarmBlock extends FarmlandBlock {
     public CustomFarmBlock(Properties properties, Supplier<Block> dirtBlock) {
-        super(properties);
-        this.dirtBlock = dirtBlock;
+        super(dirtBlock.get(), properties);
     }
 
     @Override
-    public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return !this.defaultBlockState().canSurvive(context.getLevel(), context.getClickedPos())
-                ? dirtBlock.get().defaultBlockState()
-                : super.getStateForPlacement(context);
-    }
-
-    @Override
-    public void randomTick(BlockState blockState, ServerLevel serverLevel, BlockPos blockPos, RandomSource random) {
-        serverLevel.setBlock(blockPos, blockState.setValue(MOISTURE, 7), 2);
-    }
-
-    @Override
-    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!state.canSurvive(level, pos)) {
-            turnToCustomDirt(null, state, level, pos);
-        }
-    }
-
-    @Override
-    public void fallOn(Level level, BlockState state, BlockPos pos, Entity entity, float fallDistance) {
-        if (!level.isClientSide && net.neoforged.neoforge.common.CommonHooks.onFarmlandTrample(level, pos, dirtBlock.get().defaultBlockState(), fallDistance, entity)) {
-            turnToCustomDirt(entity, state, level, pos);
-        }
-        entity.causeFallDamage(fallDistance, 1.0F, level.damageSources().fall());
-    }
-
-    private void turnToCustomDirt(@Nullable Entity entity, BlockState state, Level level, BlockPos pos) {
-        BlockState blockstate = pushEntitiesUp(state, dirtBlock.get().defaultBlockState(), level, pos);
-        level.setBlockAndUpdate(pos, blockstate);
-        level.gameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Context.of(entity, blockstate));
+    protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        level.setBlock(pos, state.setValue(MOISTURE, 7), Block.UPDATE_CLIENTS);
     }
 }

@@ -1,6 +1,7 @@
 package com.decodinator.liroth.core.blockentities;
 
 import java.util.Collection;
+import java.util.Map;
 
 import com.decodinator.liroth.client.screens.LirothSplitterMenu;
 import com.decodinator.liroth.client.screens.QuantumExtractorMenu;
@@ -14,10 +15,11 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import com.decodinator.liroth.core.blocks.QuantumExtractorBlock;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.*;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -43,6 +45,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
@@ -105,7 +109,8 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
             return 4;
         }
     };
-    private final Object2IntOpenHashMap<ResourceLocation> recipesUsed = new Object2IntOpenHashMap<>();
+    private static final Codec<Map<ResourceKey<Recipe<?>>, Integer>> RECIPES_USED_CODEC = Codec.unboundedMap(Recipe.KEY_CODEC, Codec.INT);
+    private final Object2IntOpenHashMap<ResourceKey<Recipe<?>>> recipesUsed = new Object2IntOpenHashMap<>();
     private final RecipeManager.CachedCheck<RecipeInput, ? extends AbstractQuantumRecipe> quickCheck;
 
 
@@ -161,34 +166,26 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
     }
 
     @Override
-    public void loadAdditional(CompoundTag p_155025_, HolderLookup.Provider registries) {
-        super.loadAdditional(p_155025_, registries);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
         this.inventory = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(p_155025_, this.inventory, registries);
-        this.burnTime = p_155025_.getInt("BurnTime");
-        this.cookTime = p_155025_.getInt("CookTime");
-        this.cookTimeTotal = p_155025_.getInt("CookTimeTotal");
+        ContainerHelper.loadAllItems(input, this.inventory);
+        this.burnTime = input.getIntOr("BurnTime", 0);
+        this.cookTime = input.getIntOr("CookTime", 0);
+        this.cookTimeTotal = input.getIntOr("CookTimeTotal", this.getCookTime());
         this.fuelTime = this.getFuelTime(this.inventory.get(1));
-        CompoundTag compoundtag = p_155025_.getCompound("RecipesUsed");
-
-        for(String s : compoundtag.getAllKeys()) {
-            this.recipesUsed.put(ResourceLocation.parse(s), compoundtag.getInt(s));
-        }
-
+        this.recipesUsed.clear();
+        this.recipesUsed.putAll(input.read("RecipesUsed", RECIPES_USED_CODEC).orElse(Map.of()));
     }
 
     @Override
-    protected void saveAdditional(CompoundTag p_187452_, HolderLookup.Provider registries) {
-        super.saveAdditional(p_187452_, registries);
-        p_187452_.putInt("BurnTime", this.burnTime);
-        p_187452_.putInt("CookTime", this.cookTime);
-        p_187452_.putInt("CookTimeTotal", this.cookTimeTotal);
-        ContainerHelper.saveAllItems(p_187452_, this.inventory, registries);
-        CompoundTag compoundtag = new CompoundTag();
-        this.recipesUsed.forEach((p_187449_, p_187450_) -> {
-            compoundtag.putInt(p_187449_.toString(), p_187450_);
-        });
-        p_187452_.put("RecipesUsed", compoundtag);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt("BurnTime", this.burnTime);
+        output.putInt("CookTime", this.cookTime);
+        output.putInt("CookTimeTotal", this.cookTimeTotal);
+        ContainerHelper.saveAllItems(output, this.inventory);
+        output.store("RecipesUsed", RECIPES_USED_CODEC, this.recipesUsed);
     }
 
     public void forceUpdateAllStates() {
@@ -202,7 +199,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
         world.playSound(null, pos, sound, SoundSource.BLOCKS, 1.0f, 1.0f);
     }
 
-    public static void serverTick(Level p_155014_, BlockPos p_155015_, BlockState p_155016_, QuantumExtractorBlockEntity p_155017_) {
+    public static void serverTick(ServerLevel p_155014_, BlockPos p_155015_, BlockState p_155016_, QuantumExtractorBlockEntity p_155017_) {
         boolean flag = p_155017_.isBurning();
         boolean flag1 = false;
         if (p_155017_.isBurning()) {
@@ -274,7 +271,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
 
         AbstractQuantumRecipe quantumRecipe = recipe.value();
         ItemStack result = quantumRecipe.assemble(entity, registryAccess);
-        ItemStack bonus = quantumRecipe.getBonusItem().bonus;
+        ItemStack bonus = quantumRecipe.getBonusItem().getStack();
         return !result.isEmpty()
                 && canFitOutput(inv.get(2), result, maxStackSize)
                 && (bonus.isEmpty() || quantumRecipe.getBonusItem().percent <= 0
@@ -286,7 +283,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
             ItemStack itemstack = p_155028_.get(0);
             AbstractQuantumRecipe quantumRecipe = p_155027_.value();
             addOutput(p_155028_, 2, quantumRecipe.assemble(this, registryAccess));
-            addOutput(p_155028_, 3, quantumRecipe.createBonus(level.random));
+            addOutput(p_155028_, 3, quantumRecipe.createBonus(level.getRandom()));
 
             itemstack.shrink(1);
             return true;
@@ -371,9 +368,9 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
 			return 16000;
 		} else if (fuel.isOf(LirothBlocks.REDSTONE_BROKEN_STAGE_3.asItem())) {
 			return 16000;*/
-        } else {
-            return 0;
-        }
+		} else {
+		    return 0;
+		}
     }
 
     @Override
@@ -469,6 +466,14 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
         Containers.dropContents(this.level, this.worldPosition, inventoryDrop);
     }
 
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (this.level instanceof ServerLevel) {
+            Containers.dropContents(this.level, pos, this.inventory);
+        }
+    }
+
     public int[] getSlotsForFace(Direction p_58363_) {
         if (p_58363_ == Direction.DOWN) {
             return SLOTS_FOR_DOWN;
@@ -487,8 +492,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
 
     public void setRecipeUsed(@Nullable RecipeHolder<?> p_58345_) {
         if (p_58345_ != null) {
-            ResourceLocation resourcelocation = p_58345_.id();
-            this.recipesUsed.addTo(resourcelocation, 1);
+            this.recipesUsed.addTo(p_58345_.id(), 1);
         }
 
     }
@@ -502,7 +506,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
     }
 
     public void awardUsedRecipesAndPopExperience(ServerPlayer p_155004_) {
-        Collection<RecipeHolder<?>> list = this.getRecipesToAwardAndPopExperience(p_155004_.serverLevel(), p_155004_.position());
+        Collection<RecipeHolder<?>> list = this.getRecipesToAwardAndPopExperience((ServerLevel) p_155004_.level(), p_155004_.position());
         p_155004_.awardRecipes(list);
         this.recipesUsed.clear();
     }
@@ -510,8 +514,8 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
     public Collection<RecipeHolder<?>> getRecipesToAwardAndPopExperience(ServerLevel p_154996_, Vec3 p_154997_) {
         Collection<RecipeHolder<?>> list = Lists.newArrayList();
 
-        for(Object2IntMap.Entry<ResourceLocation> entry : this.recipesUsed.object2IntEntrySet()) {
-            p_154996_.getRecipeManager().byKey(entry.getKey()).ifPresent((p_155023_) -> {
+        for(Object2IntMap.Entry<ResourceKey<Recipe<?>>> entry : this.recipesUsed.object2IntEntrySet()) {
+            p_154996_.recipeAccess().byKey(entry.getKey()).ifPresent((p_155023_) -> {
                 list.add(p_155023_);
                 createExperience(p_154996_, p_154997_, entry.getIntValue(), ((AbstractQuantumRecipe)p_155023_.value()).getExperience());
             });
@@ -523,7 +527,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
     private static void createExperience(ServerLevel p_154999_, Vec3 p_155000_, int p_155001_, float p_155002_) {
         int i = Mth.floor((float)p_155001_ * p_155002_);
         float f = Mth.frac((float)p_155001_ * p_155002_);
-        if (f != 0.0F && Math.random() < (double)f) {
+        if (f != 0.0F && p_154999_.getRandom().nextFloat() < f) {
             ++i;
         }
 
@@ -532,7 +536,7 @@ public class QuantumExtractorBlockEntity extends BlockEntity implements MenuProv
 
     public void fillStackedContents(StackedContents p_58342_) {
         for(ItemStack itemstack : this.inventory) {
-            p_58342_.accountStack(itemstack);
+            p_58342_.account(itemstack.getItem().builtInRegistryHolder(), itemstack.getCount());
         }
 
     }

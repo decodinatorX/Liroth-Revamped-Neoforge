@@ -36,9 +36,9 @@ public class LirothKeyItem extends Item {
             if (player != null) {
                 use.getItemInHand().hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
         }
-        return  InteractionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
     private void destroyConnectedLocks(Level level, Player player, BlockPos start) {
